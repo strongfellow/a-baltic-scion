@@ -1,5 +1,5 @@
 
-/**
+
 import a.baltic.scion.util
 
 import org.scalatest.FlatSpec
@@ -39,10 +39,9 @@ class VarIntSpec extends FlatSpec with Matchers {
         TestCase(0xfffffffffffffffeL, Seq(0xff, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)),
         TestCase(0xffffffffffffffffL, Seq(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff))        
     )) {
-    "varInt(%016x)".format(t.n) should ("be " + t.expectedBytes.mkString(",")) in {
+    "varInt(%016x)".format(t.n) should ("be " + t.expectedBytes.mkString("[", ",", "]")) in {
       test(t)
     }
   }
 }
- 
-*/
+

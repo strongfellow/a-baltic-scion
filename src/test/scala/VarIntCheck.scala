@@ -30,4 +30,5 @@ object VarIntCheck extends Properties("VarInt") {
     n => (varInt(n) == (Seq(0xff, n, n >> 8, n >> 16, n >> 24, n >> 32, n >> 40, n >> 48, n >> 56) map { x => (x & 0xff).toByte }))
   }
 
+  property("invertible") = Prop.forAll { (n: Long) => varInt(varInt(n)) == n }
 }

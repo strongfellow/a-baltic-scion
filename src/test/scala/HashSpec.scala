@@ -1,4 +1,4 @@
-/**
+
 import collection.mutable.Stack
 import org.scalatest._
 import a.baltic.scion.util
@@ -47,4 +47,4 @@ class HashSpec extends FlatSpec with Matchers {
   }
 
 }
-*/
+

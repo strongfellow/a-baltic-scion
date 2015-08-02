@@ -61,7 +61,7 @@ package object message {
     bs ++= util.littleEndian8(services)
     val len = address.ip.length
     if (len == 4) {
-      bs ++= Array(0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff) map f// 12 ipv4 prefix
+      bs ++= Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff) map f// 12 ipv4 prefix
     }
     if (isAddressable(address.ip)) {
       bs ++= address.ip
