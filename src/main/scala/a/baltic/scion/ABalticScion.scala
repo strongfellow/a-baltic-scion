@@ -10,6 +10,7 @@ import a.baltic.scion.tcp.Listener
 class ABalticScion extends Actor {
 
   override def preStart(): Unit = {
+    println("starting")
     val listener = context.actorOf(Props[Listener], "listener")
     val remote = new InetSocketAddress("localhost", 8333)
     val client = context.actorOf(Props(new Client(remote, listener)))

@@ -9,6 +9,30 @@ import akka.util.ByteStringBuilder
 import a.baltic.scion.domain.NetworkAddress
 import a.baltic.scion.domain.NetworkAddress
 package object message {
+
+  case class Message(magic: Long, command: String, payload: Seq[Byte])
+
+  def parseMessage(s: ByteString): Option[Message] = {
+    if (s.length < 24) {
+      None
+    } else {
+      val magic = util.littleEndian(s.take(4))
+      val command = s.drop(4).take(12).takeWhile(_ != 0).map(_.toChar).mkString("")
+      val expectedLength = util.littleEndian(s.drop(16).take(4))
+      val expectedChecksum = s.drop(20).take(4)
+      if (s.length < 24 + expectedLength) {
+        None
+      } else {
+        val payload = s.drop(24).take(expectedLength.intValue())
+        val actualChecksum = util.checksum(payload)
+        if (!expectedChecksum.sameElements(actualChecksum)) {
+          None
+        } else {
+          Some(Message(magic, command, payload))
+        }
+      }
+    }
+  }
   
   val MAIN:Array[Byte] = Array(0xF9, 0xBE, 0xB4, 0xD9).map(_.toByte)
   

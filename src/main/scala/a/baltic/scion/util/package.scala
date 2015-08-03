@@ -47,10 +47,14 @@ package object util {
       x
     } else {
       val len = if (x == 0xfd) { 2 } else if (x == 0xfe) { 4 } else { 8 }
-      bs.drop(1).take(len).zipWithIndex.map {
-        case (v, i) => ((v & 0xffL) << (8 * i))
-      }.sum
+      littleEndian(bs.drop(1).take(len))
     }
+  }
+
+  def littleEndian(bs:Seq[Byte]): Long = {
+    bs.zipWithIndex.map {
+      case (v, i) => ((v & 0xffL) << (8 * i))
+    }.sum
   }
 
   def varString(s: String): Seq[Byte] = {
