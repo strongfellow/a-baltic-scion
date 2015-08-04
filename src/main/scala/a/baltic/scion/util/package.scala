@@ -41,17 +41,30 @@ package object util {
     }
   }
 
-  def varInt(bs: Seq[Byte]): Long = {
-    val x = bs.head & 0xff
-    if (x < 0xfd) {
-      x
+
+  def parseVarInt(bs: Seq[Byte]): Option[Long] = {
+    if (bs.isEmpty) {
+      None
     } else {
-      val len = if (x == 0xfd) { 2 } else if (x == 0xfe) { 4 } else { 8 }
-      littleEndian(bs.drop(1).take(len))
+      val x = bs.head & 0xff
+      x match {
+        case 0xfd => parseLittleEndian(bs.drop(1), 2)
+        case 0xfe => parseLittleEndian(bs.drop(1), 4)
+        case 0xff => parseLittleEndian(bs.drop(1), 8)
+        case _    => Some(x)
+      }
     }
   }
 
-  def littleEndian(bs:Seq[Byte]): Long = {
+  def parseLittleEndian(bs:Seq[Byte], n: Int): Option[Long] = {
+    if (bs.length < n) {
+      None
+    } else {
+      Some(parseLittleEndian(bs.take(n)))
+    }
+  }
+
+  private def parseLittleEndian(bs:Seq[Byte]): Long = {
     bs.zipWithIndex.map {
       case (v, i) => ((v & 0xffL) << (8 * i))
     }.sum
@@ -65,7 +78,7 @@ package object util {
   def littleEndian4(n: Long) = littleEndian(n, 4)
   def littleEndian8(n: Long) = littleEndian(n, 8)
 
-  private def littleEndian(n: Long, bytes: Int):Seq[Byte] = {
+  private def littleEndian(n: Long, bytes: Int): Seq[Byte] = {
     Vector.iterate(n, bytes) { _ >> 8 } map { _.toByte }
   }
 

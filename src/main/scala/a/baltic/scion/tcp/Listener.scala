@@ -4,6 +4,7 @@ import akka.util.ByteString
 import akka.actor.Actor
 import akka.io.Tcp.Connected
 import a.baltic.scion.domain.NetworkAddress
+import a.baltic.scion.message.Message
 
 /**
  * @author andrew
@@ -29,6 +30,13 @@ class Listener extends Actor {
     case x:ByteString => {
       val messageWrapper = a.baltic.scion.message.parseMessage(x)
       println(messageWrapper)
+      messageWrapper match {
+        case Some(Message(_, "version", bytes)) =>
+          println("version received")
+          
+        case Some(Message(_, _, _)) =>
+        case None =>
+      }
 //      println("listener received: " + a.baltic.scion.util.hex(x))
     }
   }
