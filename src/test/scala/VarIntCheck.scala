@@ -4,8 +4,8 @@ import org.scalacheck.Arbitrary
 import org.scalacheck.Prop
 import org.scalacheck.Gen
 
-import a.baltic.scion.util.varInt
-import a.baltic.scion.util.parseVarInt
+import a.baltic.scion.domain.payload.MessageParser.parseVarInt
+import a.baltic.scion.domain.payload.MessageWriter.writeVarInt
 
 object VarIntCheck extends Properties("VarInt") {
   import org.scalacheck.Prop.forAll
@@ -16,20 +16,22 @@ object VarIntCheck extends Properties("VarInt") {
   val nineBytes = Arbitrary.arbitrary[Long] suchThat { n => (n > 0xffffffffL || n < 0) }
 
   property("oneBytes") = Prop.forAll(oneBytes) { 
-    n => (varInt(n) == Seq(n.toByte))
+    n => (writeVarInt(n) == Seq(n.toByte))
   }
 
   property("threeBytes") = Prop.forAll(threeBytes) {
-    n => (varInt(n) == (Seq(0xfd, n, n >> 8) map { x => (x & 0xff).toByte }))
+    n => (writeVarInt(n) == (Seq(0xfd, n, n >> 8) map { x => (x & 0xff).toByte }))
   }
   
   property("fiveBytes") = Prop.forAll(fiveBytes) {
-    n => (varInt(n) == (Seq(0xfe, n, n >> 8, n >> 16, n >> 24) map { x => (x & 0xff).toByte }))
+    n => (writeVarInt(n) == (Seq(0xfe, n, n >> 8, n >> 16, n >> 24) map { x => (x & 0xff).toByte }))
   }
 
   property("nineBytes") = Prop.forAll(nineBytes) {
-    n => (varInt(n) == (Seq(0xff, n, n >> 8, n >> 16, n >> 24, n >> 32, n >> 40, n >> 48, n >> 56) map { x => (x & 0xff).toByte }))
+    n => (writeVarInt(n) == (Seq(0xff, n, n >> 8, n >> 16, n >> 24, n >> 32, n >> 40, n >> 48, n >> 56) map { x => (x & 0xff).toByte }))
   }
 
-  property("invertible") = Prop.forAll { (n: Long) => parseVarInt(varInt(n)) == Some(n) }
+  property("invertible") = Prop.forAll { (n: Long) => 
+    val bs = writeVarInt(n)
+    parseVarInt(bs, 0) == Some(n, bs.length) }
 }

@@ -1,16 +1,15 @@
 
 
-import a.baltic.scion.util
-
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
+import a.baltic.scion.domain.payload.MessageWriter
 
 class VarIntSpec extends FlatSpec with Matchers {
   
   case class TestCase(n:Long, expectedBytes:Seq[Int])
   
   def test(t:TestCase) = {
-    val actual = util.varInt(t.n)
+    val actual = MessageWriter.writeVarInt(t.n)
     val expected = t.expectedBytes map { x => x.toByte }
     actual should be(expected)
   }

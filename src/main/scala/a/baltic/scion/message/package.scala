@@ -6,25 +6,11 @@ package a.baltic.scion
 import akka.util.ByteString
 import akka.util.ByteString.ByteString1
 import akka.util.ByteStringBuilder
-import a.baltic.scion.domain.NetworkAddress
-import a.baltic.scion.domain.NetworkAddress
-import a.baltic.scion.domain.NetworkAddress
 package object message {
-
+/**
   case class Message(magic: Long, command: String, payload: Seq[Byte])
-
   sealed abstract class Payload {}
-
   case class VersionPayload(
-    version: Long, // 4 bytes
-    services: Long, // 8 bytes
-    timestamp: Long, // 8 bytes
-    receiver: NetworkAddress, // 26 bytes
-    emitter: NetworkAddress, // 26 bytes
-    nonce: Long, // 8 bytes
-    userAgent: String, // ? bytes
-    startHeight: Long, // 4 bytes
-    relay: Boolean // 1 byte
   ) extends Payload
 
   def parseCommand(bs: Seq[Byte]): Option[String] = {
@@ -39,23 +25,6 @@ package object message {
       }
     }
   }
-
-  def parseMessage(s: ByteString): Option[Message] = {
-    val magic = util.parseLittleEndian(s, 4)
-    val command = parseCommand(s.drop(4))
-    val expectedLength = util.parseLittleEndian(s.drop(16), 4)
-    val expectedChecksum = s.drop(20).take(4)
-    
-    val payload = expectedLength.map { x =>
-      s.drop(24).take(x.intValue())
-    }
-    for {
-      m <- magic
-      c <- command
-      l <- expectedLength
-      p <- payload if (p.length == l && util.checksum(p).sameElements(expectedChecksum))
-    } yield Message(m, c, p)
-  }
   
   val MAIN:Array[Byte] = Array(0xF9, 0xBE, 0xB4, 0xD9).map(_.toByte)
   
@@ -63,7 +32,6 @@ package object message {
   
   val VERACK = m("verack")
 
-  def verackMessage = message(MAIN, "verack", Seq())
 
   def versionMessage(
     version: Long,
@@ -103,7 +71,7 @@ package object message {
   }
 
   private def f(b: Int) = { b.toByte }
-  
+
   private def netAddr(bs: ByteStringBuilder, services: Long, address: NetworkAddress): Unit= {
     bs ++= util.littleEndian8(services)
     val len = address.ip.length
@@ -117,17 +85,5 @@ package object message {
       bs ++= Array.fill(len + 2)(0.toByte)
     }
   }
-
-  def message(magic:Seq[Byte],
-      command:String,
-      payload:Seq[Byte]):Seq[Byte] = {
-    val result = new ByteStringBuilder()
-    result ++= magic
-    result ++= command.getBytes
-    result ++= new Array[Byte](12 - command.length)
-    result ++= util.littleEndian4(payload.length)
-    result ++= util.checksum(payload)
-    result ++= payload
-    result.result()
-  }
+*/
 }

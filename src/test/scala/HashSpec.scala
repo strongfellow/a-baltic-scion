@@ -2,9 +2,6 @@
 import collection.mutable.Stack
 import org.scalatest._
 import a.baltic.scion.util
-import a.baltic.scion.message.verackMessage
-import a.baltic.scion.message.versionMessage
-import a.baltic.scion.domain.NetworkAddress
 
 class HashSpec extends FlatSpec with Matchers {
 
@@ -27,6 +24,7 @@ class HashSpec extends FlatSpec with Matchers {
     }
   }
 
+  /**
   "verack" should "be correct" in {
     val msg = verackMessage
     util.hex(msg) should be("f9beb4d976657261636b000000000000000000005df6e0e2")
@@ -45,6 +43,6 @@ class HashSpec extends FlatSpec with Matchers {
         )
     util.hex(msg) should be ("f9beb4d976657273696f6e0000000000640000003b648d5a62ea0000010000000000000011b2d05000000000010000000000000000000000000000000000ffff000000000000010000000000000000000000000000000000ffff0000000000003b2eb35d8ce617650f2f5361746f7368693a302e372e322fc03e0300")
   }
-
+*/
 }
 
