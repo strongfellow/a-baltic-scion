@@ -4,6 +4,68 @@ package a.baltic.scion.domain.payload
  * @author andrew
  */
 object MessageWriter {
+  
+  def writeInetAddress(a: java.net.InetAddress, port: Int): IndexedSeq[Byte] = {
+    if (a.isSiteLocalAddress() || a.isLoopbackAddress()) {
+      Vector(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 0, 0, 0).map(_.toByte)
+    } else {
+      a.getAddress ++ bigEndian(port, 2)
+    }
+  }
+  
+  def writeNetworkAddress(n: NetworkAddress, includeTimestamp: Boolean): IndexedSeq[Byte] = {
+    n match {
+      case NetworkAddress(
+              timestamp: Option[Long], // maybe 4
+              services: Long, // 8
+              ip: java.net.InetAddress, // 16
+              port: Int // 2
+           ) => {
+             ((if (includeTimestamp) littleEndian4(timestamp.get) else Vector()) 
+                 ++ littleEndian8(services)
+                 ++ writeInetAddress(ip, port))
+           }
+    }
+  }
+
+  def write(m: BitcoinMessageEnvelope): IndexedSeq[Byte] = {
+    val command:String = m.payload match {
+      case VersionMessage(_,_,_,_,_,_,_,_,_) => "version"
+    }
+    val payload = write(m.payload)
+    (littleEndian4(m.magic)
+        ++ command.getBytes ++ new Array[Byte](12 - command.length) 
+        ++ littleEndian4(payload.length)
+        ++ littleEndian4(a.baltic.scion.util.checksum(payload))
+        ++ payload)
+  }
+
+  def write(m: BitcoinMessage): IndexedSeq[Byte] = {
+    m match {
+      case VersionMessage(
+        version: Long, // 4 bytes
+        services: Long, // 8 bytes
+        timestamp: Long, // 8 bytes
+        to: NetworkAddress, // 26
+        from: NetworkAddress, // 26
+        nonce: Long, // 8
+        userAgent: String, // ?
+        startHeight: Long, // 4
+        relay: Boolean // 1
+      ) => {
+        (littleEndian4(version)
+            ++ littleEndian8(services)
+            ++ littleEndian8(timestamp)
+            ++ writeNetworkAddress(to, false)
+            ++ writeNetworkAddress(from, false)
+            ++ littleEndian8(nonce)
+            ++ writeVarString(userAgent)
+            ++ littleEndian4(startHeight)
+            ++ (if (version < 70001) { Vector() } else { Vector(if (relay) 1 else 0) }).map(_.toByte))
+      }
+    }
+  }
+  
   def writeVarInt(n: Long): IndexedSeq[Byte] = {
     if (n > -1) {
       if (n < 0xfdL) {
@@ -30,8 +92,9 @@ object MessageWriter {
     Vector.iterate(n, bytes) { _ >> 8 } map { _.toByte }
   }
   private def bigEndian(n: Long, bytes: Int): IndexedSeq[Byte] = {
-    ((bytes - 1) to 0) map {
-      i => ((n >>> (8 * i)) & 0xff).toByte
+    val bs = (1 to bytes) map {
+      i => ((n >>> (8 * (bytes - i))) & 0xff).toByte
     }
+    bs
   }
 }

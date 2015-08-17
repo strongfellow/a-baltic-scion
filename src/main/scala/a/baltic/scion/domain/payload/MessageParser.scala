@@ -5,8 +5,65 @@ package a.baltic.scion.domain.payload
  */
 object MessageParser {
 
-  private def parseLittleEndian(bytes: IndexedSeq[Byte], start: Int, n: Int): Option[(Long, Int)] = {
+  def cmd(s:String): IndexedSeq[Byte] = {
+    s.getBytes ++ Vector.fill(12 - s.length())(0.toByte)
+  }
+
+  val VERSION = cmd("version")
+  
+  def parseBitcoinMessage(
+      bytes: IndexedSeq[Byte],
+      start: Int,
+      command: IndexedSeq[Byte],
+      length: Long,
+      checksum: Long): Option[(BitcoinMessage, Int)] = {
+    if (a.baltic.scion.util.checksum(bytes.slice(start, start + length.intValue())) != checksum) {
+      return None
+    }
+    val originalStart = start
+    command match {
+      case VERSION => {
+        for {
+          (m, s) <- parseVersionMessage(bytes, start)
+          if (s - originalStart == length)
+        } yield (m, s)
+      }
+    }
+  }
+
+  def parseBitcoinMessageEnvelope(
+      bytes: IndexedSeq[Byte], start: Int): Option[(BitcoinMessageEnvelope, Int)] = {
+    for {
+      (magic, start) <- parseLittleEndian(bytes, start, 4)
+      (command, start) <- parseCommand(bytes, start)
+      (length, start) <- parseLittleEndian(bytes, start, 4)
+      (checksum, start) <- parseLittleEndian(bytes, start, 4)
+      (payload, start) <- parseBitcoinMessage(bytes, start, command, length, checksum)
+    } yield (BitcoinMessageEnvelope(magic, payload), start)
+  }
+
+  def parseCommand(bytes: IndexedSeq[Byte], start: Int): Option[(IndexedSeq[Byte], Int)] = {
+    if (start + 12 > bytes.length) {
+      None
+    } else {
+      Some((bytes.slice(start, start + 12), start + 12))
+    }
+  }
+  
+  def parseBigEndian(bytes: IndexedSeq[Byte], start: Int, n: Int): Option[(Long, Int)] = {
     if ((start + n) > bytes.length) {
+      None
+    } else {
+      val sum = bytes.slice(start, start + n).foldLeft(0){(a, b) => (a << 8) + b}
+      Some((sum, start + n))
+    }
+  }
+  
+  def parseLittleEndian(bytes: IndexedSeq[Byte], start: Int, n: Int): Option[(Long, Int)] = {
+    if ((start + n) > bytes.length) {
+      println("start: " + start)
+      println("n:     " + n)
+      println("bytes.length: " + bytes.length)
       None
     } else {
       val sum = (0 until n).map {
@@ -37,12 +94,97 @@ object MessageParser {
     parseVarInt(bytes, i).flatMap({
       case (n: Long, j: Int) => {
         if (j + n <= bytes.length) {
-          Some((bytes.slice(j, j + n.intValue()).mkString, j + n.intValue()))
+          Some((bytes.slice(j, j + n.intValue()).map(_.toChar).mkString, j + n.intValue()))
         } else {
           None
         }
       }
     })
+  }
+
+  def parseHash(bytes: IndexedSeq[Byte], start: Int): Option[(IndexedSeq[Byte], Int)] = {
+    if (start + 32 > bytes.length) {
+      None
+    } else {
+      Some((bytes.slice(start, start + 32), start + 32))
+    }
+  }
+
+  def parseNetworkAddress(
+      bytes: IndexedSeq[Byte],
+      start: Int,
+      includeTimestamp: Boolean): Option[(NetworkAddress, Int)] = {
+    
+    def parseTimestamp(bytes: IndexedSeq[Byte], start: Int, includeTimestamp: Boolean): Option[(Option[Long], Int)] = {
+      if (includeTimestamp) {
+        for {
+          (n, i) <- parseLittleEndian(bytes, start, 4)
+        } yield (Some(n), i)
+      } else {
+        Some((None, start))
+      }
+    }
+    
+    def parseIp(bytes: IndexedSeq[Byte], start: Int): Option[(java.net.InetAddress, Int)] = {
+      if (start + 16 > bytes.length) {
+        None
+      } else {
+        val bs: Array[Byte] = bytes.slice(start, start + 16).toArray
+        Some((java.net.InetAddress.getByAddress(bs), start + 16))
+      }
+    }
+    for {
+      (timestamp, i) <- parseTimestamp(bytes, start, includeTimestamp)
+      (services, j) <- parseLittleEndian(bytes, i, 8)
+      (ip, k) <- parseIp(bytes, j)
+      (port, l) <- parseBigEndian(bytes, k, 2)
+    } yield (NetworkAddress(timestamp, services, ip, port.intValue()), l)
+  }
+
+  def parseVersionMessage(bytes: IndexedSeq[Byte], start: Int): Option[(VersionMessage, Int)] = {
+/**
+ * 4  version   int32_t   Identifies protocol version being used by the node
+8   services  uint64_t  bitfield of features to be enabled for this connection
+8   timestamp   int64_t   standard UNIX timestamp in seconds
+26  addr_recv   net_addr  The network address of the node receiving this message
+Fields below require version ≥ 106
+26  addr_from   net_addr  The network address of the node emitting this message
+8   nonce   uint64_t  Node random nonce, randomly generated every time a version packet is sent. This nonce is used to detect connections to self.
+ ?  user_agent  var_str   User Agent (0x00 if string is 0 bytes long)
+4   start_height  int32_t   The last block received by the emitting node
+Fields below require version ≥ 70001
+1   relay   bool  Whether the remote peer should announce relayed transactions or not, see BIP 0037
+ */
+    def parseBoolean(version: Long, bytes: IndexedSeq[Byte], start: Int): Option[(Boolean, Int)] = {
+      if (version >= 70001L) {
+        for {
+          (b, i) <- parseLittleEndian(bytes, start, 1)
+        } yield ((b != 0), i)
+      } else {
+        Some((true, start))
+      }
+    }
+    for {
+      (version, i) <- parseLittleEndian(bytes, start, 4)
+      (services, j) <- parseLittleEndian(bytes, i, 8)
+      (timestamp, k) <- parseLittleEndian(bytes, j, 8)
+      (receiver, l) <- parseNetworkAddress(bytes, k, false)
+      (sender, m) <- parseNetworkAddress(bytes, l, false)
+      (nonce, n) <- parseLittleEndian(bytes, m, 8)
+      (userAgent, o) <- parseString(bytes, n)
+      (startHeight, p) <- parseLittleEndian(bytes, o, 4)
+      (relay, q) <- parseBoolean(version, bytes, p)
+    } yield (VersionMessage(
+      version,
+      services,
+      timestamp,
+      receiver,
+      sender,
+      nonce,
+      userAgent,
+      startHeight,
+      relay
+    ), q)
   }
 
 }

@@ -2,6 +2,11 @@
 import collection.mutable.Stack
 import org.scalatest._
 import a.baltic.scion.util
+import a.baltic.scion.domain.payload.VersionMessage
+import a.baltic.scion.domain.payload.NetworkAddress
+import a.baltic.scion.domain.payload.MessageWriter
+import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
+import a.baltic.scion.domain.payload.MessageParser
 
 class HashSpec extends FlatSpec with Matchers {
 
@@ -29,20 +34,37 @@ class HashSpec extends FlatSpec with Matchers {
     val msg = verackMessage
     util.hex(msg) should be("f9beb4d976657261636b000000000000000000005df6e0e2")
   }
-  
+  */
   "versionMessage" should "be correct" in {
-    val msg = versionMessage(
+    val bs = Array(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 127, 0, 0, 1).map(_.toByte)
+    val localhost = java.net.InetAddress.getByAddress(bs)
+    val bs2 = Array(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 0, 0, 0, 0).map(_.toByte)
+    val empty = java.net.InetAddress.getByAddress(bs2)
+    val msg = BitcoinMessageEnvelope(0xD9B4BEF9L, VersionMessage(
         60002L, // protocol version
         1L, // services
         1355854353L, // timestamp 
-        NetworkAddress(Array(127, 0, 0, 1), 8333), // remote address
-        NetworkAddress(Array(127, 0, 0, 1), 12345), // local address
+        NetworkAddress(None, 1, localhost, 8333), // remote address
+        NetworkAddress(None, 1, localhost, 12345), // local address
         7284544412836900411L, // little endian nonce 
         "/Satoshi:0.7.2/", // UserAgent
-        212672L // startHeight
-        )
-    util.hex(msg) should be ("f9beb4d976657273696f6e0000000000640000003b648d5a62ea0000010000000000000011b2d05000000000010000000000000000000000000000000000ffff000000000000010000000000000000000000000000000000ffff0000000000003b2eb35d8ce617650f2f5361746f7368693a302e372e322fc03e0300")
-  }
-*/
-}
+        212672L,
+        true// startHeight
+        ))
+    val msg2 = BitcoinMessageEnvelope(0xD9B4BEF9L, VersionMessage(
+        60002L, // protocol version
+        1L, // services
+        1355854353L, // timestamp 
+        NetworkAddress(None, 1, empty, 0), // remote address
+        NetworkAddress(None, 1, empty, 0), // local address
+        7284544412836900411L, // little endian nonce 
+        "/Satoshi:0.7.2/", // UserAgent
+        212672L,
+        true// startHeight
+        ))
 
+    val bytes = MessageWriter.write(msg)
+    MessageParser.parseBitcoinMessageEnvelope(bytes, 0) should be(Some((msg2, bytes.length)))
+    util.hex(bytes) should be ("f9beb4d976657273696f6e0000000000640000003b648d5a62ea0000010000000000000011b2d05000000000010000000000000000000000000000000000ffff000000000000010000000000000000000000000000000000ffff0000000000003b2eb35d8ce617650f2f5361746f7368693a302e372e322fc03e0300")
+  }
+}
