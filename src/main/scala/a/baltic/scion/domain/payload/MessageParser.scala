@@ -1,5 +1,7 @@
 package a.baltic.scion.domain.payload
 
+import scala.annotation.tailrec
+
 /**
  * @author andrew
  */
@@ -10,25 +12,33 @@ object MessageParser {
   }
 
   val VERSION = cmd("version")
-  
+  val VERACK = cmd("verack")
+  val ADDR = cmd("addr")
+
   def parseBitcoinMessage(
       bytes: IndexedSeq[Byte],
       start: Int,
       command: IndexedSeq[Byte],
       length: Long,
       checksum: Long): Option[(BitcoinMessage, Int)] = {
+    
+    val f = {
+      command match {
+        case VERSION => parseVersionMessage(bytes, start)
+        case VERACK => Some((VerackMessage(), start))
+        case ADDR => parseAddrMessage(bytes, start)
+      }
+    }
+    
     if (a.baltic.scion.util.checksum(bytes.slice(start, start + length.intValue())) != checksum) {
       return None
     }
     val originalStart = start
-    command match {
-      case VERSION => {
-        for {
-          (m, s) <- parseVersionMessage(bytes, start)
-          if (s - originalStart == length)
-        } yield (m, s)
-      }
-    }
+    
+    for {
+      (m, s) <- f
+      if (s - originalStart == length)
+    } yield (m, s)
   }
 
   def parseBitcoinMessageEnvelope(
@@ -54,7 +64,7 @@ object MessageParser {
     if ((start + n) > bytes.length) {
       None
     } else {
-      val sum = bytes.slice(start, start + n).foldLeft(0){(a, b) => (a << 8) + b}
+      val sum = bytes.slice(start, start + n).foldLeft(0){(a, b) => (a << 8) + (b & 0xff)}
       Some((sum, start + n))
     }
   }
@@ -141,6 +151,13 @@ object MessageParser {
     } yield (NetworkAddress(timestamp, services, ip, port.intValue()), l)
   }
 
+  def parseAddrMessage(bytes: IndexedSeq[Byte], start: Int): Option[(AddrMessage, Int)] = {
+    for {(as, x) <- varTimes((bs: IndexedSeq[Byte], s: Int) => parseNetworkAddress(bs, s, true), 
+                   bytes,
+                   start)
+         } yield (AddrMessage(as), x)
+  }
+
   def parseVersionMessage(bytes: IndexedSeq[Byte], start: Int): Option[(VersionMessage, Int)] = {
 /**
  * 4  version   int32_t   Identifies protocol version being used by the node
@@ -187,4 +204,24 @@ Fields below require version ≥ 70001
     ), q)
   }
 
+  def varTimes[T](f: (IndexedSeq[Byte], Int) => Option[(T, Int)],
+                  bytes: IndexedSeq[Byte],
+                  start: Int) = {
+    @tailrec def n(start: Int, ts: Vector[T], remaining: Int): Option[(Vector[T], Int)] = {
+      if (remaining <= 0) {
+        Some((ts, start))
+      } else {
+        val x = f(bytes, start)
+        x match {
+          case None => None
+          case Some((t, s)) => return n(s, ts :+ t, remaining - 1)
+        }
+      }
+    }
+    for {
+      (nTimes, s) <- parseVarInt(bytes, start)
+      x <- n(s, Vector.empty[T], nTimes.intValue())
+    } yield x
+  }
+  
 }

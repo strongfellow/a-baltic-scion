@@ -4,7 +4,9 @@ package a.baltic.scion
  * @author andrew
  */
 import a.baltic.scion.domain.payload.MessageParser
+import scala.annotation.tailrec
 package object util {
+  
   import java.security.MessageDigest
   import org.bouncycastle.jcajce.provider.digest.SHA256.Digest 
 
@@ -20,12 +22,12 @@ package object util {
     md.update(h1)
     md.digest()
   }
-  def hex(bs: Seq[Byte]): String = {
+  def hex(bs: IndexedSeq[Byte]): String = {
     bs.map("%02x" format _) .mkString
   }
 
-  def unHex(h: String): Seq[Byte] = {
-    h.grouped(2).map(Integer.parseInt(_, 16).toByte).toSeq
+  def unHex(h: String): IndexedSeq[Byte] = {
+    h.grouped(2).map(Integer.parseInt(_, 16).toByte).toIndexedSeq
   }
 
 }

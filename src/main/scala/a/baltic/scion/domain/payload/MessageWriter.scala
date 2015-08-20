@@ -31,6 +31,7 @@ object MessageWriter {
   def write(m: BitcoinMessageEnvelope): IndexedSeq[Byte] = {
     val command:String = m.payload match {
       case VersionMessage(_,_,_,_,_,_,_,_,_) => "version"
+      case AddrMessage(_) => "addr"
     }
     val payload = write(m.payload)
     (littleEndian4(m.magic)
@@ -62,6 +63,10 @@ object MessageWriter {
             ++ writeVarString(userAgent)
             ++ littleEndian4(startHeight)
             ++ (if (version < 70001) { Vector() } else { Vector(if (relay) 1 else 0) }).map(_.toByte))
+      }
+      case AddrMessage(addresses) => {
+        (writeVarInt(addresses.length)
+          ++ addresses.flatMap { x => writeNetworkAddress(x, true) })
       }
     }
   }
