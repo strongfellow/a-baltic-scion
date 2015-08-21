@@ -14,6 +14,27 @@ object MessageParser {
   val VERSION = cmd("version")
   val VERACK = cmd("verack")
   val ADDR = cmd("addr")
+  val INV = cmd("inv")
+  val GETDATA = cmd("getdata")
+  val NOTFOUND = cmd("notfound")
+  val GETBLOCKS = cmd("getblocks")
+  val GETHEADERS = cmd("getheaders")
+  val TX = cmd("tx")
+  val BLOCK = cmd("block")
+  val HEADERS = cmd("headers")
+  val GETADDR = cmd("getaddr")
+  val MEMPOOL = cmd("mempool")
+  val CHECKORDER = cmd("checkorder")
+  val SUBMITORDER = cmd("submitorder")
+  val REPLY = cmd("reply")
+  val PING = cmd("ping")
+  val PONG = cmd("pong")
+  val REJECT = cmd("reject")
+  val FILTERLOAD = cmd("filterload")
+  val FILTERADD = cmd("filteradd")
+  val FILTERCLEAR = cmd("filterclear")
+  val MERKLEBOCK = cmd("merklebock")
+  val ALERT = cmd("alert")
 
   def parseBitcoinMessage(
       bytes: IndexedSeq[Byte],
@@ -22,11 +43,32 @@ object MessageParser {
       length: Long,
       checksum: Long): Option[(BitcoinMessage, Int)] = {
     
-    val f = {
+    val f: Option[(BitcoinMessage, Int)] = {
       command match {
         case VERSION => parseVersionMessage(bytes, start)
         case VERACK => Some((VerackMessage(), start))
         case ADDR => parseAddrMessage(bytes, start)
+        case INV => parseInvMessage(bytes, start)
+        case GETDATA => parseGetDataMessage(bytes, start)
+        case NOTFOUND => parseNotFoundMessage(bytes, start)
+        case GETBLOCKS => parseGetBlocksMessage(bytes, start)
+        case GETHEADERS => parseGetHeadersMessage(bytes, start)
+        case TX => parseTxMessage(bytes, start)
+        case BLOCK => parseBlockMessage(bytes, start)
+        case HEADERS => parseHeadersMessage(bytes, start)
+        case GETADDR => parseGetAddrMessage(bytes, start)
+        case MEMPOOL => parseMemPoolMessae(bytes, start)
+        case CHECKORDER => parseCheckOrderMessage(bytes, start)
+        case SUBMITORDER => parseSubmitOrderMessage(bytes, start)
+        case REPLY => parseReplyMessage(bytes, start)
+        case PING => parsePingMessage(bytes, start)
+        case PONG => parsePongMessage(bytes, start)
+        case REJECT => parseRejectMessage(bytes, start, start + length.intValue())
+        case FILTERLOAD => parseFilterLoadMessage(bytes, start)
+        case FILTERADD => parseFilterAddMessage(bytes, start)
+        case FILTERCLEAR => parseFilterClearMessage(bytes, start)
+        case MERKLEBOCK => parseMerkleBlockMessage(bytes, start)
+        case ALERT => parseAlertMessage(bytes, start)
       }
     }
     
@@ -53,11 +95,7 @@ object MessageParser {
   }
 
   def parseCommand(bytes: IndexedSeq[Byte], start: Int): Option[(IndexedSeq[Byte], Int)] = {
-    if (start + 12 > bytes.length) {
-      None
-    } else {
-      Some((bytes.slice(start, start + 12), start + 12))
-    }
+    nBytes(bytes, start, 12)
   }
   
   def parseBigEndian(bytes: IndexedSeq[Byte], start: Int, n: Int): Option[(Long, Int)] = {
@@ -112,14 +150,15 @@ object MessageParser {
     })
   }
 
-  def parseHash(bytes: IndexedSeq[Byte], start: Int): Option[(IndexedSeq[Byte], Int)] = {
+  def parseHash(bytes: IndexedSeq[Byte], start: Int): Option[(Vector[Byte], Int)] = {
     if (start + 32 > bytes.length) {
       None
     } else {
-      Some((bytes.slice(start, start + 32), start + 32))
+      Some((bytes.slice(start, start + 32).toVector, start + 32))
     }
   }
 
+  
   def parseNetworkAddress(
       bytes: IndexedSeq[Byte],
       start: Int,
@@ -156,6 +195,31 @@ object MessageParser {
                    bytes,
                    start)
          } yield (AddrMessage(as), x)
+  }
+  
+  def parseInventoryVector(bs: IndexedSeq[Byte], s:Int) = {
+    for {
+      (invType, s) <- parseLittleEndian(bs, s, 4)
+      (hash, s) <- parseHash(bs, s)
+    } yield (Inventory(invType, hash), s)
+  }
+  
+  private def parseGetDataMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (as, x) <- varTimes(parseInventoryVector, bytes, start)
+    } yield (GetDataMessage(as), x)
+  }
+  
+  private def parseNotFoundMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (as, x) <- varTimes(parseInventoryVector, bytes, start)
+    } yield (NotFoundMessage(as), x)
+  }
+  
+ private def parseInvMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (as, x) <- varTimes(parseInventoryVector, bytes, start)
+    } yield (InvMessage(as), x)
   }
 
   def parseVersionMessage(bytes: IndexedSeq[Byte], start: Int): Option[(VersionMessage, Int)] = {
@@ -222,6 +286,135 @@ Fields below require version ≥ 70001
       (nTimes, s) <- parseVarInt(bytes, start)
       x <- n(s, Vector.empty[T], nTimes.intValue())
     } yield x
+  }
+
+  private def parseGetBlocksMessage(bytes: IndexedSeq[Byte], start: Int): Option[(GetBlocksMessage, Int)] = {
+    for {
+      (version, start) <- parseLittleEndian(bytes, start, 4)
+      (hashes, start) <- varTimes(parseHash, bytes, start)
+      (hashStop, start) <- parseHash(bytes, start)
+    } yield (GetBlocksMessage(version, hashes, hashStop), start)
+  }
+
+  private def parseGetHeadersMessage(bytes: IndexedSeq[Byte], start: Int) = {
+for {
+      (version, start) <- parseLittleEndian(bytes, start, 4)
+      (hashes, start) <- varTimes(parseHash, bytes, start)
+      (hashStop, start) <- parseHash(bytes, start)
+    } yield (GetHeadersMessage(version, hashes, hashStop), start)
+  }
+  
+  def parseScript(bytes: IndexedSeq[Byte], start: Int): Option[(Vector[Byte], Int)] = {
+    for {
+      (n, start) <- parseVarInt(bytes, start)
+      x <- nBytes(bytes, start, n)
+    } yield x
+  }
+  
+  private def nBytes(bytes: IndexedSeq[Byte], start: Int, n: Long): Option[(Vector[Byte], Int)] = {
+    if (start + n.intValue() <= bytes.length) {
+      Some(bytes.slice(start, start + n.intValue()).toVector, start + n.intValue())
+    } else {
+      None
+    }
+  }
+  
+  private def parseTxin(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (hash, start) <- parseHash(bytes, start)
+      (index, start) <- parseLittleEndian(bytes, start, 4)
+      (script, start) <- parseScript(bytes, start)
+      (sequence, start) <- parseLittleEndian(bytes, start, 4)
+    } yield (TxIn(hash, index, script, sequence), start)
+  }
+  private def parseTxout(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (value, start) <- parseLittleEndian(bytes, start, 8)
+      (script, start) <- parseScript(bytes, start)
+    } yield (TxOut(value, script), start)
+  }
+  
+  private def parseVersion(bytes: IndexedSeq[Byte], start: Int) = {
+    parseLittleEndian(bytes, start, 4) 
+  }
+  private def parseTxMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (version, start) <- parseVersion(bytes, start)
+      (txins, start) <- varTimes(parseTxin, bytes, start)
+      (txouts, start) <- varTimes(parseTxout, bytes, start)
+      (lockTime, start) <- parseLittleEndian(bytes, start, 4)
+    } yield (TxMessage(version, txins, txouts, lockTime), start)
+  }
+  private def parseBlockMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (version, start) <- parseVersion(bytes, start)
+      (previousBlock, start) <- parseHash(bytes, start)
+      (merkleRoot, start) <- parseHash(bytes, start)
+      (timestamp, start) <- parseLittleEndian(bytes, start, 4)
+      (bits, start) <- parseLittleEndian(bytes, start, 4)
+      (nonce, start) <- parseLittleEndian(bytes, start, 4)
+      (transactions, start) <- varTimes(parseTxMessage, bytes, start)
+    } yield (BlockMessage(version, previousBlock, merkleRoot, timestamp, bits, nonce, transactions), start)
+  }
+
+  private def parseHeadersMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    for {
+      (blocks, start) <-varTimes(parseBlockMessage, bytes, start)
+    } yield (HeadersMessage(blocks), start)
+  }
+
+  private def parseGetAddrMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    Some(GetAddrMessage(), start)
+  }
+  private def parseMemPoolMessae(bytes: IndexedSeq[Byte], start: Int) = {
+    Some(MemPoolMessage(), start)
+  }
+
+  private def parseCheckOrderMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    None
+  }
+
+  private def parseSubmitOrderMessage(bytes: IndexedSeq[Byte], start: Int) = {
+    None
+  }
+  private def parseReplyMessage(bytes: IndexedSeq[Byte], start: Int): Option[(ReplyMessage, Int)] = {
+    None
+  }
+  private def parsePingMessage(bytes: IndexedSeq[Byte], start: Int): Option[(PingMessage, Int)] = {
+    for {
+      (nonce, start) <- parseLittleEndian(bytes, start, 8)
+    } yield (PingMessage(nonce), start)
+  }
+
+  private def parsePongMessage(bytes: IndexedSeq[Byte], start: Int): Option[(PongMessage, Int)] = {
+    for {
+      (nonce, start) <- parseLittleEndian(bytes, start, 8)
+    } yield (PongMessage(nonce), start)
+  }
+
+  private def parseRejectMessage(bytes: IndexedSeq[Byte], start: Int, end: Int): Option[(RejectMessage, Int)] = {
+    for {
+      (message, start) <- parseString(bytes, start)
+      (ccode, start) <- Some(bytes(start), start + 1)
+      (reason, start) <- parseString(bytes, start)
+      (data, start) <- nBytes(bytes, start, (end - start))
+    } yield (RejectMessage(message, ccode, reason, data), start)
+  }
+
+  private def parseFilterLoadMessage(bytes: IndexedSeq[Byte], start: Int): Option[(FilterLoadMessage, Int)] = {
+    None
+  }
+  private def parseFilterAddMessage(bytes: IndexedSeq[Byte], start: Int): Option[(FilterAddMessage, Int)] = {
+    None
+  }
+  private def parseFilterClearMessage(bytes: IndexedSeq[Byte], start: Int): Option[(FilterClearMessage, Int)] = {
+    None
+  }
+  private def parseMerkleBlockMessage(bytes: IndexedSeq[Byte], start: Int): Option[(MerkleBlockMessage, Int)] = {
+    None
+  }
+  private def parseAlertMessage(bytes: IndexedSeq[Byte], start: Int): Option[(AlertMessage, Int)] = {
+    None
   }
   
 }

@@ -32,6 +32,7 @@ object MessageWriter {
     val command:String = m.payload match {
       case VersionMessage(_,_,_,_,_,_,_,_,_) => "version"
       case AddrMessage(_) => "addr"
+      case VerackMessage() => "verack"
     }
     val payload = write(m.payload)
     (littleEndian4(m.magic)
@@ -68,9 +69,19 @@ object MessageWriter {
         (writeVarInt(addresses.length)
           ++ addresses.flatMap { x => writeNetworkAddress(x, true) })
       }
+      case VerackMessage() => Vector.empty
+      case InvMessage(inventories) => {
+        (writeVarInt(inventories.length)
+          ++ inventories.flatMap { x => writeInventory(x) }
+          )
+      }
     }
   }
   
+  def writeInventory(inv: Inventory) = {
+    littleEndian(inv.invType, 4) ++ inv.hash
+  }
+
   def writeVarInt(n: Long): IndexedSeq[Byte] = {
     if (n > -1) {
       if (n < 0xfdL) {

@@ -9,6 +9,7 @@ import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
 import a.baltic.scion.domain.payload.MessageParser
 import a.baltic.scion.domain.payload.AddrMessage
 import a.baltic.scion.domain.payload.AddrMessage
+import a.baltic.scion.domain.payload.VerackMessage
 
 class HashSpec extends FlatSpec with Matchers {
 
@@ -31,12 +32,13 @@ class HashSpec extends FlatSpec with Matchers {
     }
   }
 
-  /**
   "verack" should "be correct" in {
-    val msg = verackMessage
-    util.hex(msg) should be("f9beb4d976657261636b000000000000000000005df6e0e2")
+    val msg = BitcoinMessageEnvelope(0xD9B4BEF9L, VerackMessage())
+    val bytes = MessageWriter.write(msg)
+    util.hex(bytes) should be("f9beb4d976657261636b000000000000000000005df6e0e2")
+    MessageParser.parseBitcoinMessageEnvelope(bytes, 0) should be(Some((msg, bytes.length)))
   }
-  */
+
   "versionMessage" should "be correct" in {
     val bs = Array(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 127, 0, 0, 1).map(_.toByte)
     val localhost = java.net.InetAddress.getByAddress(bs)

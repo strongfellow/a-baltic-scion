@@ -13,12 +13,12 @@ package object payload {
   )
 
   abstract class BitcoinMessage {}
-  
+
   case class Inventory(
-    invType: Long,
-    hash: IndexedSeq[Byte]
+    invType: Long, // 4 bytes
+    hash: IndexedSeq[Byte] // 32 bytes
   )
-  
+
   case class TxIn(
       hash: Vector[Byte],
       index: Long,
