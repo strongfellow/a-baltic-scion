@@ -7,37 +7,75 @@ import a.baltic.scion.util.checksum
  */
 package object payload {
 
+  type Script = Vector[Byte]
+  type Hash = Vector[Byte]
+  type Parser[T] = Option[(T, Int)]
+
   case class BitcoinMessageEnvelope(
     magic: Long,
     payload: BitcoinMessage
   )
 
-  abstract class BitcoinMessage {}
+  trait Command {
+    def command: String
+  }
 
+  trait BitcoinSerializable {
+    def serialize(): IndexedSeq[Byte]
+  }
+  sealed abstract class BitcoinMessage extends Command with BitcoinSerializable
+  sealed abstract class EmptyMessage extends BitcoinMessage {
+    final def serialize() = { Vector.empty}
+  }
+  
   case class Inventory(
     invType: Long, // 4 bytes
-    hash: IndexedSeq[Byte] // 32 bytes
-  )
+    hash: Vector[Byte] // 32 bytes
+  ) extends BitcoinSerializable {
+    def serialize() = {
+      MessageWriter.littleEndian4(invType) ++ hash
+    }
+  }
 
   case class TxIn(
       hash: Vector[Byte],
       index: Long,
       script: Vector[Byte],
       sequence: Long
-  )
+  ) extends BitcoinSerializable {
+    def serialize() = {
+      (hash
+          ++ MessageWriter.littleEndian4(index)
+          ++ script
+          ++ MessageWriter.littleEndian4(sequence))
+    }
+  }
   
   case class TxOut(
       value: Long,
       script: Vector[Byte]
-  )
+  ) extends BitcoinSerializable {
+    def serialize() = {
+      MessageWriter.littleEndian8(value) ++ script
+    }
+  }
   
   case class NetworkAddress(
     timestamp: Option[Long], // maybe 4
     services: Long, // 8
     ip: java.net.InetAddress, // 16
     port: Int // 2
-  )
-  
+  ) extends BitcoinSerializable {
+    def serialize() = {
+      ((timestamp match {
+        case Some(x) => MessageWriter.littleEndian4(x)
+        case None => Vector.empty
+       })
+         ++ MessageWriter.littleEndian8(services)
+         ++ MessageWriter.writeInetAddress(ip, port))
+    }
+  }
+
   case class VersionMessage(
     version: Long, // 4 bytes
     services: Long, // 8 bytes
@@ -48,99 +86,225 @@ package object payload {
     userAgent: String, // ?
     startHeight: Long, // 4
     relay: Boolean // 1
-  ) extends BitcoinMessage
+  ) extends BitcoinMessage {
+    val command = "version"
+    def serialize() = {
+      (MessageWriter.littleEndian4(version)
+          ++ MessageWriter.littleEndian8(services)
+          ++ MessageWriter.littleEndian8(timestamp)
+          ++ MessageWriter.writeNetworkAddress(to, false)
+          ++ MessageWriter.writeNetworkAddress(from, false)
+          ++ MessageWriter.littleEndian8(nonce)
+          ++ MessageWriter.writeVarString(userAgent)
+          ++ MessageWriter.littleEndian4(startHeight)
+          ++ (if (version > 70000) Vector(if (relay) 1 else 0) else Vector.empty).map(_.toByte)
+      )
+    }
+  }
 
-  case class VerackMessage() extends BitcoinMessage
+  case class VerackMessage() extends BitcoinMessage {
+    val command = "verack"
+    def serialize() = Vector.empty[Byte]
+  }
   
   case class AddrMessage(
-      addresses: IndexedSeq[NetworkAddress]
-  ) extends BitcoinMessage
-  
+      addresses: Vector[NetworkAddress]
+  ) extends BitcoinMessage {
+    val command = "addr"
+    def serialize() = {
+      MessageWriter.serializeVector(addresses)
+    }
+  }
+
   case class InvMessage(
-    inventories: IndexedSeq[Inventory]
-  ) extends BitcoinMessage
+    inventories: Vector[Inventory]
+  ) extends BitcoinMessage {
+    val command = "inv"
+    def serialize() = {
+      MessageWriter.serializeVector(inventories)
+    }
+  }
   
   case class GetDataMessage(
-    inventories: IndexedSeq[Inventory]
-  ) extends BitcoinMessage
+    inventories: Vector[Inventory]
+  ) extends BitcoinMessage {
+    val command = "getdata"
+    def serialize() = {
+      MessageWriter.serializeVector(inventories)
+    }
+  }
   
   case class NotFoundMessage(
-      inventories: IndexedSeq[Inventory]
-  ) extends BitcoinMessage
+      inventories: Vector[Inventory]
+  ) extends BitcoinMessage {
+    val command = "notfound"
+    def serialize() = {
+      MessageWriter.serializeVector(inventories)
+    }
+  }
   
   case class GetBlocksMessage(
       version: Long,
-      hashes: IndexedSeq[IndexedSeq[Byte]],
-      hashStop: IndexedSeq[Byte]
-  ) extends BitcoinMessage
+      hashes: Vector[Vector[Byte]],
+      hashStop: Vector[Byte]
+  ) extends BitcoinMessage {
+    val command = "getblocks"
+    def serialize() = {
+      (MessageWriter.littleEndian4(version)
+          ++ MessageWriter.writeHashes(hashes)
+          ++ hashStop)
+    }
+  }
   
   case class GetHeadersMessage(
       version: Long,
-      hashes: IndexedSeq[IndexedSeq[Byte]],
-      hashStop: IndexedSeq[Byte]
-  ) extends BitcoinMessage
+      hashes: Vector[Vector[Byte]],
+      hashStop: Vector[Byte]
+  ) extends BitcoinMessage {
+    val command = "getheaders"
+    def serialize() = {
+      (MessageWriter.littleEndian4(version)
+          ++ MessageWriter.writeHashes(hashes)
+          ++ hashStop)
+    }
+  }
   
   case class TxMessage(
       version: Long,
       txins: Vector[TxIn],
       txouts: Vector[TxOut],
       lockTime: Long
-  ) extends BitcoinMessage
-
+  ) extends BitcoinMessage {
+    val command = "tx"
+    def serialize() = {
+      (MessageWriter.littleEndian4(version)
+          ++ MessageWriter.serializeVector(txins)
+          ++ MessageWriter.serializeVector(txouts)
+          ++ MessageWriter.littleEndian4(lockTime))
+    }
+  }
 
   case class BlockMessage(
-      version: Long,
-      previousBlock: Vector[Byte],
-      merkeRoot: Vector[Byte],
-      timestamp: Long,
-      bits: Long,
-      nonce: Long,
+      header: BlockHeader,
       transactions: Vector[TxMessage]
-  ) extends BitcoinMessage
-  
+  ) extends BitcoinMessage {
+    val command = "block"
+    def serialize() = {
+      header.serialize() ++ MessageWriter.serializeVector(transactions)
+    }
+  }
+
   case class HeadersMessage(
       headers: Vector[BlockMessage]
-  ) extends BitcoinMessage
+  ) extends BitcoinMessage {
+    val command = "headers"
+    def serialize() = {
+      MessageWriter.serializeVector(headers)
+    }
+  }
 
-  case class GetAddrMessage() extends BitcoinMessage
-  case class MemPoolMessage() extends BitcoinMessage
+  case class GetAddrMessage() extends EmptyMessage { val command = "getaddr" }
+  case class MemPoolMessage() extends EmptyMessage { val command = "mempool" }
 
-  case class CheckOrderMessage() extends BitcoinMessage
-  case class SubmitOrderMessage() extends BitcoinMessage
-  case class ReplyMessage() extends BitcoinMessage
+  case class CheckOrderMessage() extends EmptyMessage { val command = "checkorder" }
+  case class SubmitOrderMessage() extends EmptyMessage { val command = "submitorder" }
+  case class ReplyMessage() extends EmptyMessage { val command = "reply" }
 
-  case class PingMessage(nonce: Long) extends BitcoinMessage
-  case class PongMessage(nonce: Long) extends BitcoinMessage
+  case class PingMessage(nonce: Long) extends BitcoinMessage {
+    val command = "ping"
+    def serialize() = {
+      MessageWriter.littleEndian8(nonce)
+    }
+  }
+
+  case class PongMessage(nonce: Long) extends BitcoinMessage {
+    val command = "pong"
+    def serialize() = {
+      MessageWriter.littleEndian8(nonce)
+    }
+  }
+
   case class RejectMessage(
       message: String,
       ccode: Int,
       reason: String,
       data: Vector[Byte]
-  ) extends BitcoinMessage
+  ) extends BitcoinMessage {
+    val command = "reject"
+    def serialize() = {
+      (MessageWriter.writeVarString(message)
+          ++ Vector(ccode.toByte)
+          ++ MessageWriter.writeVarString(reason)
+          ++ data)
+    }
+  }
+
   case class FilterLoadMessage(
       filter: Vector[Byte],
       numberOfHashFunctions: Long,
       nTweak: Long,
-      nFlags: Long
-  ) extends BitcoinMessage
+      nFlags: Byte
+  ) extends BitcoinMessage {
+    val command = "filterload"
+    def serialize() = {
+      (MessageWriter.writeBytes(filter)
+          ++ MessageWriter.littleEndian4(numberOfHashFunctions)
+          ++ MessageWriter.littleEndian4(nTweak)
+          ++ Vector(nFlags))
+    }
+  }
 
   case class FilterAddMessage(
       data: Vector[Byte]
-  ) extends BitcoinMessage
+  ) extends BitcoinMessage {
+    val command = "filteradd"
+    def serialize() = {
+      MessageWriter.writeBytes(data)
+    }
+  }
 
-  case class FilterClearMessage() extends BitcoinMessage
-  case class MerkleBlockMessage(
+  final case class BlockHeader(
       version: Long,
       previousBlock: Vector[Byte],
-      merkeRoot: Vector[Byte],
+      merkleRoot: Vector[Byte],
       timestamp: Long,
       bits: Long,
-      nonce: Long,
+      nonce: Long) extends BitcoinSerializable {
+    def serialize() = {
+            (MessageWriter.littleEndian4(version) // 4 bytes
+          ++ previousBlock // 32 bytes
+          ++ merkleRoot // 32 bytes
+          ++ MessageWriter.littleEndian4(timestamp) // 4 bytes
+          ++ MessageWriter.littleEndian4(bits) // 4 bytes
+          ++ MessageWriter.littleEndian4(nonce)) // 4 bytes
+    }
+  }
+    
+
+  
+  case class FilterClearMessage() extends EmptyMessage { val command = "filterclear" }
+  case class MerkleBlockMessage(
+      header: BlockHeader,
       numTx: Long,
       hashes: Vector[Vector[Byte]],
       flags: Vector[Byte]
-
-  ) extends BitcoinMessage
-  case class AlertMessage() extends BitcoinMessage
+  ) extends BitcoinMessage {
+    val command = "merkleblock"
+    def serialize() = {
+      (header.serialize()
+          ++ MessageWriter.littleEndian4(numTx)
+          ++ MessageWriter.writeHashes(hashes)
+          ++ MessageWriter.writeBytes(flags))
+    }
+  }
+  case class AlertMessage(
+      payload: Vector[Byte],
+      signature: Vector[Byte]
+  ) extends BitcoinMessage {
+    val command = "alert"
+    def serialize() = {
+      MessageWriter.writeBytes(payload) ++ MessageWriter.writeBytes(payload)
+    }
+  }
 
 }

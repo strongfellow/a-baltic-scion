@@ -43,7 +43,8 @@ class Listener extends Actor {
       message match {
         case Some((BitcoinMessageEnvelope(_, VersionMessage(_, _, _, _, _, _, _, _, _)), _)) =>
           println("version received")
-        case Some((BitcoinMessageEnvelope(_, _), _)) => println("something else received")
+        case Some((BitcoinMessageEnvelope(_, _), _)) =>
+          println("something else received")
         case None =>
           println("None received")
       }

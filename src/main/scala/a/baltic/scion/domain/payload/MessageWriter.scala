@@ -29,12 +29,8 @@ object MessageWriter {
   }
 
   def write(m: BitcoinMessageEnvelope): IndexedSeq[Byte] = {
-    val command:String = m.payload match {
-      case VersionMessage(_,_,_,_,_,_,_,_,_) => "version"
-      case AddrMessage(_) => "addr"
-      case VerackMessage() => "verack"
-    }
-    val payload = write(m.payload)
+    val command:String = m.payload.command
+    val payload = m.payload.serialize
     (littleEndian4(m.magic)
         ++ command.getBytes ++ new Array[Byte](12 - command.length) 
         ++ littleEndian4(payload.length)
@@ -43,43 +39,7 @@ object MessageWriter {
   }
 
   def write(m: BitcoinMessage): IndexedSeq[Byte] = {
-    m match {
-      case VersionMessage(
-        version: Long, // 4 bytes
-        services: Long, // 8 bytes
-        timestamp: Long, // 8 bytes
-        to: NetworkAddress, // 26
-        from: NetworkAddress, // 26
-        nonce: Long, // 8
-        userAgent: String, // ?
-        startHeight: Long, // 4
-        relay: Boolean // 1
-      ) => {
-        (littleEndian4(version)
-            ++ littleEndian8(services)
-            ++ littleEndian8(timestamp)
-            ++ writeNetworkAddress(to, false)
-            ++ writeNetworkAddress(from, false)
-            ++ littleEndian8(nonce)
-            ++ writeVarString(userAgent)
-            ++ littleEndian4(startHeight)
-            ++ (if (version < 70001) { Vector() } else { Vector(if (relay) 1 else 0) }).map(_.toByte))
-      }
-      case AddrMessage(addresses) => {
-        (writeVarInt(addresses.length)
-          ++ addresses.flatMap { x => writeNetworkAddress(x, true) })
-      }
-      case VerackMessage() => Vector.empty
-      case InvMessage(inventories) => {
-        (writeVarInt(inventories.length)
-          ++ inventories.flatMap { x => writeInventory(x) }
-          )
-      }
-    }
-  }
-  
-  def writeInventory(inv: Inventory) = {
-    littleEndian(inv.invType, 4) ++ inv.hash
+    m.serialize()
   }
 
   def writeVarInt(n: Long): IndexedSeq[Byte] = {
@@ -98,6 +58,14 @@ object MessageWriter {
     }
   }
 
+  def writeHashes(hashes: Vector[Vector[Byte]]) = {
+    writeVarInt(hashes.length) ++ hashes.flatMap((x:Vector[Byte]) => x)
+  }
+  
+  def writeBytes(bs: Vector[Byte]) = {
+    writeVarInt(bs.length) ++ bs
+  }
+  
   def writeVarString(s: String): IndexedSeq[Byte] = {
     writeVarInt(s.length()) ++ s.map { _.toByte }
   }
@@ -112,5 +80,9 @@ object MessageWriter {
       i => ((n >>> (8 * (bytes - i))) & 0xff).toByte
     }
     bs
+  }
+  
+  def serializeVector(items:Vector[BitcoinSerializable]) = {
+    writeVarInt(items.length) ++ items.flatMap(_.serialize())
   }
 }
