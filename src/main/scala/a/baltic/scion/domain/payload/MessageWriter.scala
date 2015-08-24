@@ -81,7 +81,7 @@ object MessageWriter {
     }
     bs
   }
-  
+
   def serializeVector(items:Vector[BitcoinSerializable]) = {
     writeVarInt(items.length) ++ items.flatMap(_.serialize())
   }

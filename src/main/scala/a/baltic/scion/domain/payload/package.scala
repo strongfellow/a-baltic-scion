@@ -30,7 +30,7 @@ package object payload {
   
   case class Inventory(
     invType: Long, // 4 bytes
-    hash: Vector[Byte] // 32 bytes
+    hash: Hash // 32 bytes
   ) extends BitcoinSerializable {
     def serialize() = {
       MessageWriter.littleEndian4(invType) ++ hash
@@ -38,9 +38,9 @@ package object payload {
   }
 
   case class TxIn(
-      hash: Vector[Byte],
+      hash: Hash,
       index: Long,
-      script: Vector[Byte],
+      script: Script,
       sequence: Long
   ) extends BitcoinSerializable {
     def serialize() = {
@@ -53,7 +53,7 @@ package object payload {
   
   case class TxOut(
       value: Long,
-      script: Vector[Byte]
+      script: Script
   ) extends BitcoinSerializable {
     def serialize() = {
       MessageWriter.littleEndian8(value) ++ script
@@ -145,8 +145,8 @@ package object payload {
   
   case class GetBlocksMessage(
       version: Long,
-      hashes: Vector[Vector[Byte]],
-      hashStop: Vector[Byte]
+      hashes: Vector[Hash],
+      hashStop: Hash
   ) extends BitcoinMessage {
     val command = "getblocks"
     def serialize() = {
@@ -158,8 +158,8 @@ package object payload {
   
   case class GetHeadersMessage(
       version: Long,
-      hashes: Vector[Vector[Byte]],
-      hashStop: Vector[Byte]
+      hashes: Vector[Hash],
+      hashStop: Hash
   ) extends BitcoinMessage {
     val command = "getheaders"
     def serialize() = {
@@ -265,8 +265,8 @@ package object payload {
 
   final case class BlockHeader(
       version: Long,
-      previousBlock: Vector[Byte],
-      merkleRoot: Vector[Byte],
+      previousBlock: Hash,
+      merkleRoot: Hash,
       timestamp: Long,
       bits: Long,
       nonce: Long) extends BitcoinSerializable {
@@ -286,7 +286,7 @@ package object payload {
   case class MerkleBlockMessage(
       header: BlockHeader,
       numTx: Long,
-      hashes: Vector[Vector[Byte]],
+      hashes: Vector[Hash],
       flags: Vector[Byte]
   ) extends BitcoinMessage {
     val command = "merkleblock"
