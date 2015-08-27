@@ -9,7 +9,10 @@ object MessageWriter {
     if (a.isSiteLocalAddress() || a.isLoopbackAddress()) {
       Vector(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 0, 0, 0).map(_.toByte)
     } else {
-      a.getAddress ++ bigEndian(port, 2)
+      val addr = a.getAddress
+      
+      (if (addr.length == 4) Vector(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff) else Vector()
+          ).map {_.toByte } ++ addr ++ bigEndian(port, 2)
     }
   }
   
@@ -21,9 +24,10 @@ object MessageWriter {
               ip: java.net.InetAddress, // 16
               port: Int // 2
            ) => {
-             ((if (includeTimestamp) littleEndian4(timestamp.get) else Vector()) 
-                 ++ littleEndian8(services)
-                 ++ writeInetAddress(ip, port))
+             val ts = (if (includeTimestamp) littleEndian4(timestamp.get) else Vector())
+             val svc = littleEndian8(services)
+             val inet = writeInetAddress(ip, port)
+             ts ++ svc ++ inet
            }
     }
   }
@@ -36,10 +40,6 @@ object MessageWriter {
         ++ littleEndian4(payload.length)
         ++ littleEndian4(a.baltic.scion.util.checksum(payload))
         ++ payload)
-  }
-
-  def write(m: BitcoinMessage): IndexedSeq[Byte] = {
-    m.serialize()
   }
 
   def writeVarInt(n: Long): IndexedSeq[Byte] = {

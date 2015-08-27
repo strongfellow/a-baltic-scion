@@ -205,7 +205,7 @@ object MessageParser {
     nBytes(bytes, start, 32)
   }
 
-  private def parseNetworkAddress(
+  def parseNetworkAddress(
       bytes: IndexedSeq[Byte],
       start: Int,
       includeTimestamp: Boolean): Parser[NetworkAddress] = {
