@@ -68,13 +68,16 @@ object VarIntCheck extends Properties("VarInt") {
     }
   }
   
-  property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope) { m =>
-    val versionPayload = m.payload
+  property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope2) { m =>
+    val expectedPayload = m.payload
     val bytes = MessageWriter.write(m)
     val parsedMessage = MessageParser.parseBitcoinMessageEnvelope(bytes, 0)
     val parsed = parsedMessage.get._1
     val len = parsedMessage.get._2
-    (versionPayload, parsed.payload) match {
+    (expectedPayload, parsed.payload) match {
+      case (AddrMessage(as), AddrMessage(bs)) => {
+        (as.length == bs.length) && as.zip(bs).forall { case (a, b) => networksEquivalent(a, b) }
+      }
       case (VersionMessage(
           version,
           services,
@@ -107,7 +110,8 @@ object VarIntCheck extends Properties("VarInt") {
             && relay == relay2)
       }
       case (a, b) => {
-        a == b
+        val result = (a == b)
+        result
       }
       case _ => {
         false

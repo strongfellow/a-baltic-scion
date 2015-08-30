@@ -46,7 +46,7 @@ package object payload {
     def serialize() = {
       (hash
           ++ MessageWriter.littleEndian4(index)
-          ++ script
+          ++ MessageWriter.writeBytes(script)
           ++ MessageWriter.littleEndian4(sequence))
     }
   }
@@ -56,7 +56,7 @@ package object payload {
       script: Script
   ) extends BitcoinSerializable {
     def serialize() = {
-      MessageWriter.littleEndian8(value) ++ script
+      MessageWriter.littleEndian8(value) ++ MessageWriter.writeBytes(script)
     }
   }
   
