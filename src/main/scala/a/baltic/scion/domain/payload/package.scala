@@ -226,14 +226,14 @@ package object payload {
 
   case class RejectMessage(
       message: String,
-      ccode: Int,
+      ccode: Byte,
       reason: String,
       data: Vector[Byte]
   ) extends BitcoinMessage {
     val command = "reject"
     def serialize() = {
       (MessageWriter.writeVarString(message)
-          ++ Vector(ccode.toByte)
+          ++ Vector(ccode)
           ++ MessageWriter.writeVarString(reason)
           ++ data)
     }
@@ -303,7 +303,7 @@ package object payload {
   ) extends BitcoinMessage {
     val command = "alert"
     def serialize() = {
-      MessageWriter.writeBytes(payload) ++ MessageWriter.writeBytes(payload)
+      MessageWriter.writeBytes(payload) ++ MessageWriter.writeBytes(signature)
     }
   }
 
