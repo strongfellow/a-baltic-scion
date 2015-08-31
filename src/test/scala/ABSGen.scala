@@ -134,8 +134,12 @@ object ABSGen {
     transactions <- listOf(genTxMessage)
   } yield BlockMessage(header, transactions.toVector)
 
+  val genEmptyBlockMessage = for {
+    header <- genBlockHeader
+  } yield BlockMessage(header, Vector.empty[TxMessage])
+  
   val genHeadersMessage = for {
-    headers <- listOf(genBlockMessage)
+    headers <- listOf(genEmptyBlockMessage)
   } yield HeadersMessage(headers.toVector)
 
   val genGetAddrMessage = const(GetAddrMessage())
