@@ -39,7 +39,7 @@ object ABSGen {
   } yield NetworkAddress(None, services, ip, port)
   
   val genNetworkAddressYesTimestamp = for {
-    timestamp <- arbitrary[Long]
+    timestamp <- gen4Bytes
     services <- arbitrary[Long]
     ip <- oneOf(genIpv6, genIpv4)
     port <- Gen.choose(1, 65535)
@@ -175,23 +175,19 @@ object ABSGen {
 
   val genMerkleBlockMessage = for {
     header <- genBlockHeader
-    numTx <- arbitrary[Long]
+    nonce <- gen4Bytes
+    numTx <- gen4Bytes
     hashes <- listOf(genHash)
     flags <- ABSGen.genByteVector
-  } yield MerkleBlockMessage(header, numTx, hashes.toVector, flags)
+  } yield MerkleBlockMessage(header, nonce, numTx, hashes.toVector, flags)
 
   val genAlertMessage = for {
     payload <- ABSGen.genByteVector
     sig <- ABSGen.genByteVector
   } yield AlertMessage(payload, sig)
 
-
-  
   val genMessage: Gen[BitcoinMessage] = Gen.oneOf(
-    genBlockMessage,
-    genBlockMessage
 
-      /**
     genVersionMessage,
     genVerackMessage,
     genAddrMessage,
@@ -201,6 +197,7 @@ object ABSGen {
     genGetBlocksMessage,
     genGetHeadersMessage,
     genTxMessage,
+    genBlockMessage,
     genHeadersMessage,
     genGetAddrMessage,
     genMemPoolMessage,
@@ -208,7 +205,6 @@ object ABSGen {
     genCheckOrderMessage,
     genSubmitOrderMessage,
     genReplyMessage,
- * 
  */
     genPingMessage,
     genPongMessage,
@@ -218,28 +214,10 @@ object ABSGen {
     genFilterClearMessage,
     genMerkleBlockMessage,
     genAlertMessage
-    * 
-    */
+
   )
 
-  val genBitcoinMessageEnvelope2 = const(
-BitcoinMessageEnvelope(118034699,
-    BlockMessage(
-        BlockHeader(114766439,
-      Vector(-69, 127, 123, 127, 127, 43, 1, 127, -1, 1, 93, 0, 0, -128, -1, 1, -128, 127, -128, -68, 80, -1, 1, -124, -128, 127, 0, 1, 127, -1, -33, 127),
-      Vector(50, -1, 0, -128, -1, 17, -128, 77, -128, -119, 8, 0, 34, 49, 100, 1, 0, -68, -65, -128, -51, -126, -128, 33, -37, 0, 127, 0, -1, 0, 120, 56),
-      1341000135,
-      3600879112L,
-      3164043241L),
-  Vector(
-      TxMessage(3511727288L,
-      Vector(
-          TxIn(
-              Vector(-84, 1, 127, 75, 69, 51, 93, -48, -88, -117, 127, -1, 127,
-   -43, 119, 0, -18, -1, 1, -1, -54, 1, -128, -38, -119, 19, 0, 0, 127, 127
-  , -120, 1),743647144,
-  Vector(74),1798067653)),
-  Vector(TxOut(1,Vector(1))),1125719729))))  )
+
   val genBitcoinMessageEnvelope = for {
     magic <- genMagic
     message <- genMessage

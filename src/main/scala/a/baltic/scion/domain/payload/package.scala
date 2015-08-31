@@ -285,6 +285,7 @@ package object payload {
   case class FilterClearMessage() extends EmptyMessage { val command = "filterclear" }
   case class MerkleBlockMessage(
       header: BlockHeader,
+      nonce: Long,
       numTx: Long,
       hashes: Vector[Hash],
       flags: Vector[Byte]
@@ -292,6 +293,7 @@ package object payload {
     val command = "merkleblock"
     def serialize() = {
       (header.serialize()
+          ++ MessageWriter.littleEndian4(nonce)
           ++ MessageWriter.littleEndian4(numTx)
           ++ MessageWriter.writeHashes(hashes)
           ++ MessageWriter.writeBytes(flags))

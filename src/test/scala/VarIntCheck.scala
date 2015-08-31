@@ -68,7 +68,8 @@ object VarIntCheck extends Properties("VarInt") {
     }
   }
   
-  property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope2) { m =>
+  property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope) { m =>
+    println(m)
     val expectedPayload = m.payload
     val bytes = MessageWriter.write(m)
     val parsedMessage = MessageParser.parseBitcoinMessageEnvelope(bytes, 0)

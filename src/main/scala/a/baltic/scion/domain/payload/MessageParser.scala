@@ -89,7 +89,7 @@ object MessageParser {
   val FILTERLOAD = cmd("filterload")
   val FILTERADD = cmd("filteradd")
   val FILTERCLEAR = cmd("filterclear")
-  val MERKLEBOCK = cmd("merklebock")
+  val MERKLEBOCK = cmd("merkleblock")
   val ALERT = cmd("alert")
 
   def parseBitcoinMessage(
@@ -415,10 +415,11 @@ object MessageParser {
   private def parseMerkleBlockMessage(bytes: IndexedSeq[Byte], start: Int): Parser[MerkleBlockMessage] = {
     for {
       (header, start) <- parseBlockHeader(bytes, start)
+      (nonce, start) <- parseLittleEndian(bytes, start, 4)
       (nTx, start) <- parseLittleEndian(bytes, start, 4)
       (hashes, start) <- varTimes(parseHash, bytes, start)
       (flags, start) <- parseScript(bytes, start)
-    } yield (MerkleBlockMessage(header, nTx, hashes, flags), start)
+    } yield (MerkleBlockMessage(header, nonce, nTx, hashes, flags), start)
   }
   private def parseAlertMessage(bytes: IndexedSeq[Byte], start: Int): Parser[AlertMessage] = {
     for {
