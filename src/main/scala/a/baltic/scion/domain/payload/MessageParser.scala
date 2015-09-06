@@ -13,7 +13,7 @@ object MessageParser {
       x <- nBytes(bytes, start, n)
     } yield x
   }
-  
+
   private def nBytes(bytes: IndexedSeq[Byte], start: Int, n: Long): Parser[Vector[Byte]] = {
     if (start + n.intValue() <= bytes.length) {
       Some(bytes.slice(start, start + n.intValue()).toVector, start + n.intValue())
@@ -37,9 +37,9 @@ object MessageParser {
       (script, start) <- parseScript(bytes, start)
     } yield (TxOut(value, script), start)
   }
-  
+
   private def parseVersion(bytes: IndexedSeq[Byte], start: Int) = {
-    parseLittleEndian(bytes, start, 4) 
+    parseLittleEndian(bytes, start, 4)
   }
 
   private def varTimes[T](f: (IndexedSeq[Byte], Int) => Parser[T],
@@ -98,7 +98,7 @@ object MessageParser {
       command: IndexedSeq[Byte],
       length: Long,
       checksum: Long): Parser[BitcoinMessage] = {
-    
+
     val f = {
       command match {
         case VERSION => parseVersionMessage(bytes, start)
@@ -127,12 +127,12 @@ object MessageParser {
         case ALERT => parseAlertMessage(bytes, start)
       }
     }
-    
+
     if (a.baltic.scion.util.checksum(bytes.slice(start, start + length.intValue())) != checksum) {
       return None
     }
     val originalStart = start
-    
+
     for {
       (m, s) <- f
       if (s - originalStart == length)
@@ -209,8 +209,8 @@ object MessageParser {
       bytes: IndexedSeq[Byte],
       start: Int,
       includeTimestamp: Boolean): Parser[NetworkAddress] = {
-    
-    def parseTimestamp(bytes: IndexedSeq[Byte], 
+
+    def parseTimestamp(bytes: IndexedSeq[Byte],
         start: Int,
         includeTimestamp: Boolean): Parser[Option[Long]] = {
       if (includeTimestamp) {
@@ -221,11 +221,11 @@ object MessageParser {
         Some((None, start))
       }
     }
-    
-    def parseIp(bytes: IndexedSeq[Byte], start: Int): Parser[java.net.InetAddress] = {
+
+    def parseIp(bytes: IndexedSeq[Byte], start: Int): Parser[Vector[Byte]] = {
       for {
-        (bs, start) <- nBytes(bytes, start, 16)
-      } yield (java.net.InetAddress.getByAddress(bs.toArray), start)
+        x <- nBytes(bytes, start, 16)
+      } yield x
     }
     for {
       (timestamp, i) <- parseTimestamp(bytes, start, includeTimestamp)
@@ -252,7 +252,7 @@ object MessageParser {
       (nonce, start) <- parseLittleEndian(bytes, start, 4)
     } yield (BlockHeader(version, previousBlock, merkleRoot, timestamp, bits, nonce), start)
   }
-  
+
 
   private def parseVersionMessage(bytes: IndexedSeq[Byte], start: Int): Parser[VersionMessage] = {
     def parseRelayBoolean(version: Long, bytes: IndexedSeq[Byte], start: Int): Parser[Boolean] = {
@@ -292,7 +292,7 @@ object MessageParser {
   }
 
   private def parseAddrMessage(bytes: IndexedSeq[Byte], start: Int): Parser[AddrMessage] = {
-    for {(as, x) <- varTimes((bs: IndexedSeq[Byte], s: Int) => parseNetworkAddress(bs, s, true), 
+    for {(as, x) <- varTimes((bs: IndexedSeq[Byte], s: Int) => parseNetworkAddress(bs, s, true),
                    bytes,
                    start)
          } yield (AddrMessage(as), x)
@@ -309,7 +309,7 @@ object MessageParser {
       (invs, start) <- varTimes(parseInventoryVector, bytes, start)
     } yield (GetDataMessage(invs), start)
   }
-  
+
   private def parseNotFoundMessage(bytes: IndexedSeq[Byte], start: Int) = {
     for {
       (invs, start) <- varTimes(parseInventoryVector, bytes, start)

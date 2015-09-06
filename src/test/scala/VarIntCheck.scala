@@ -17,14 +17,14 @@ object VarIntCheck extends Properties("VarInt") {
   val fiveBytes = Gen.choose(0x10000L, 0xffffffffL)
   val nineBytes = Arbitrary.arbitrary[Long] suchThat { n => (n > 0xffffffffL || n < 0) }
 
-  property("oneBytes") = Prop.forAll(oneBytes) { 
+  property("oneBytes") = Prop.forAll(oneBytes) {
     n => (writeVarInt(n) == Seq(n.toByte))
   }
 
   property("threeBytes") = Prop.forAll(threeBytes) {
     n => (writeVarInt(n) == (Seq(0xfd, n, n >> 8) map { x => (x & 0xff).toByte }))
   }
-  
+
   property("fiveBytes") = Prop.forAll(fiveBytes) {
     n => (writeVarInt(n) == (Seq(0xfe, n, n >> 8, n >> 16, n >> 24) map { x => (x & 0xff).toByte }))
   }
@@ -33,11 +33,11 @@ object VarIntCheck extends Properties("VarInt") {
     n => (writeVarInt(n) == (Seq(0xff, n, n >> 8, n >> 16, n >> 24, n >> 32, n >> 40, n >> 48, n >> 56) map { x => (x & 0xff).toByte }))
   }
 
-  property("invertible") = Prop.forAll { (n: Long) => 
+  property("invertible") = Prop.forAll { (n: Long) =>
     val bs = writeVarInt(n)
     parseVarInt(bs, 0) == Some(n, bs.length)
   }
-  
+
   property("littleEndian4") = Prop.forAll(Gen.choose(0L, 2L * Int.MaxValue)) { x =>
     val bytes = MessageWriter.littleEndian4(x)
     MessageParser.parseLittleEndian(bytes, 0, 4) == Some(x, 4)
@@ -47,7 +47,7 @@ object VarIntCheck extends Properties("VarInt") {
     val bytes = MessageWriter.littleEndian8(x)
     MessageParser.parseLittleEndian(bytes, 0, 8) == Some(x, 8)
   }
-  
+
   property("network addresss") = Prop.forAll(ABSGen.genNetworkAddressNoTimestamp) { n =>
     val bytes = MessageWriter.writeNetworkAddress(n, false)
     val parsed = MessageParser.parseNetworkAddress(bytes, 0, false)
@@ -55,20 +55,23 @@ object VarIntCheck extends Properties("VarInt") {
     val nBytes = parsed.get._2
     nBytes == 26 && networksEquivalent(n, addr)
   }
-  
+
   def networksEquivalent(a:NetworkAddress, b:NetworkAddress) = {
-    if (a.ip.isSiteLocalAddress() || a.ip.isLoopbackAddress()) {
+    val aip = java.net.InetAddress.getByAddress(a.ip.toArray)
+    val bip = java.net.InetAddress.getByAddress(b.ip.toArray)
+    if (aip.isSiteLocalAddress() || aip.isLoopbackAddress()) {
         (a.timestamp == b.timestamp
           && a.services == b.services
-          && b.ip == java.net.InetAddress.getByAddress(
+          && bip == java.net.InetAddress.getByAddress(
               Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 0).map { _.toByte})
           && b.port == 0)
     } else {
       a == b
     }
   }
-  
-  property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope) { m =>
+
+
+  def f(m:BitcoinMessageEnvelope) = {
     val expectedPayload = m.payload
     val bytes = MessageWriter.write(m)
     val parsedMessage = MessageParser.parseBitcoinMessageEnvelope(bytes, 0)
@@ -117,5 +120,15 @@ object VarIntCheck extends Properties("VarInt") {
         false
       }
     }
+
   }
+
+  property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope) { m =>
+    f(m)
+  }
+/**
+  property("problem-fixer") = Prop.forAll(ABSGen.genX) {
+    m => f(m)
+  }
+*/
 }

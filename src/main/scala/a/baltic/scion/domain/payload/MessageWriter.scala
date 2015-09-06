@@ -4,24 +4,24 @@ package a.baltic.scion.domain.payload
  * @author andrew
  */
 object MessageWriter {
-  
-  def writeInetAddress(a: java.net.InetAddress, port: Int): IndexedSeq[Byte] = {
-    if (a.isSiteLocalAddress() || a.isLoopbackAddress()) {
+
+  def writeInetAddress(a: Vector[Byte], port: Int): IndexedSeq[Byte] = {
+    val address = java.net.InetAddress.getByAddress(a.toArray)
+    if (address.isSiteLocalAddress() || address.isLoopbackAddress()) {
       Vector(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 0, 0, 0).map(_.toByte)
     } else {
-      val addr = a.getAddress
-      
+      val addr = a
       (if (addr.length == 4) Vector(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff) else Vector()
           ).map {_.toByte } ++ addr ++ bigEndian(port, 2)
     }
   }
-  
+
   def writeNetworkAddress(n: NetworkAddress, includeTimestamp: Boolean): IndexedSeq[Byte] = {
     n match {
       case NetworkAddress(
               timestamp: Option[Long], // maybe 4
               services: Long, // 8
-              ip: java.net.InetAddress, // 16
+              ip: Vector[Byte],
               port: Int // 2
            ) => {
              val ts = (if (includeTimestamp) littleEndian4(timestamp.get) else Vector())
@@ -36,7 +36,7 @@ object MessageWriter {
     val command:String = m.payload.command
     val payload = m.payload.serialize
     (littleEndian4(m.magic)
-        ++ command.getBytes ++ new Array[Byte](12 - command.length) 
+        ++ command.getBytes ++ new Array[Byte](12 - command.length)
         ++ littleEndian4(payload.length)
         ++ littleEndian4(a.baltic.scion.util.checksum(payload))
         ++ payload)
@@ -61,11 +61,11 @@ object MessageWriter {
   def writeHashes(hashes: Vector[Vector[Byte]]) = {
     writeVarInt(hashes.length) ++ hashes.flatMap((x:Vector[Byte]) => x)
   }
-  
+
   def writeBytes(bs: Vector[Byte]) = {
     writeVarInt(bs.length) ++ bs
   }
-  
+
   def writeVarString(s: String): IndexedSeq[Byte] = {
     writeVarInt(s.length()) ++ s.map { _.toByte }
   }

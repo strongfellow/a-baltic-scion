@@ -11,61 +11,84 @@ import a.baltic.scion.domain.payload._
 
 object ABSGen {
 
+  val genX = const(
+    BitcoinMessageEnvelope(
+        118034699,
+        VersionMessage(
+            1078721452,
+            2993965376L,
+            -4461974043726512372L,
+            NetworkAddress(
+                None,
+                -5956424977621936308L,
+                Vector(1, -1, 127, -52),
+                58895),
+            NetworkAddress(
+                None,
+                5227063365501308449L,
+                Vector(-4, 0, -1, -1),
+                33706),
+            -9223372036854775808L,
+            "ub",
+            619283475,
+            true)))
+
+
   val genByteVector = for {
     bs <- Gen.listOf(arbitrary[Byte])
   } yield bs.toVector
 
-  
+
   val genHash = for {
     h <- listOfN(32, arbitrary[Byte])
   } yield h.toVector
 
   val genIpv6 = for {
     ip <- listOfN(16, arbitrary[Byte])
-  } yield java.net.InetAddress.getByAddress(ip.toArray)
+  } yield ip.toVector
 
   val genIpv4 = for {
     ip <- listOfN(4, arbitrary[Byte])
-  } yield java.net.InetAddress.getByAddress(ip.toArray)
+  } yield Vector(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff).map(_.toByte) ++ ip.toVector
 
   val gen4Bytes = Gen.choose(0L, 2L * Int.MaxValue)
   val gen8Bytes = arbitrary[Long]
   val genUserAgent = Gen.identifier
-  
+
   val genNetworkAddressNoTimestamp = for {
     services <- arbitrary[Long]
     ip <- oneOf(genIpv6, genIpv4)
     port <- Gen.choose(1, 65535)
   } yield NetworkAddress(None, services, ip, port)
-  
+
   val genNetworkAddressYesTimestamp = for {
     timestamp <- gen4Bytes
     services <- arbitrary[Long]
     ip <- oneOf(genIpv6, genIpv4)
     port <- Gen.choose(1, 65535)
   } yield NetworkAddress(Some(timestamp), services, ip, port)
-  
+
   val genInventoryVector = for {
     invType <- gen4Bytes
     hash <- genHash
   } yield Inventory(invType, hash)
-  
+
   val genTxin = for {
     hash <- genHash
     index <- gen4Bytes
     script <- genByteVector
     sequence <- gen4Bytes
   } yield TxIn(hash, index, script, sequence)
-  
+
   val genTxout = for {
     value <- arbitrary[Long]
     script <- genByteVector
   } yield TxOut(value, script)
-  
+
   val genAscii = for {
     xs <- listOf(Gen.choose[Byte](0, Byte.MaxValue))
   } yield xs.mkString("")
-  
+
   final val genBlockHeader = for {
     version <- gen4Bytes
     previousBlock <- genHash
@@ -74,10 +97,10 @@ object ABSGen {
     bits <- gen4Bytes
     nonce <- gen4Bytes
   } yield BlockHeader(version, previousBlock, merkle, timestamp, bits, nonce)
-  
 
 
-  
+
+
   val genMagic = Gen.oneOf(0xD9B4BEF9L, 0xDAB5BFFAL, 0x0709110BL, 0xFEB4BEF9L)
   val genVersionMessage: Gen[BitcoinMessage] = for {
     version <- gen4Bytes
@@ -92,7 +115,7 @@ object ABSGen {
   } yield VersionMessage(
     version, services, timestamp, to, from, nonce, userAgent, startHeight, (version < 70000 || relay)
   )
-  
+
   val genVerackMessage = const(VerackMessage())
   val genAddrMessage = for {
     invs <- listOf(genNetworkAddressYesTimestamp)
@@ -105,23 +128,23 @@ object ABSGen {
   val genGetDataMessage = for {
     invs <- listOf(genInventoryVector)
   } yield GetDataMessage(invs.toVector)
-  
+
   val genNotFoundMessage = for {
     invs <- listOf(genInventoryVector)
   } yield NotFoundMessage(invs.toVector)
-  
+
   val genGetBlocksMessage = for {
     version <- gen4Bytes
     hashes <- listOf(genHash)
     hashStop <- genHash
   } yield GetBlocksMessage(version, hashes.toVector, hashStop)
-  
+
   val genGetHeadersMessage = for {
     version <- gen4Bytes
     hashes <- listOf(genHash)
     hashStop <- genHash
   } yield GetHeadersMessage(version, hashes.toVector, hashStop)
-  
+
   val genTxMessage = for {
     version <- gen4Bytes
     txins <- listOf(genTxin)
@@ -137,7 +160,7 @@ object ABSGen {
   val genEmptyBlockMessage = for {
     header <- genBlockHeader
   } yield BlockMessage(header, Vector.empty[TxMessage])
-  
+
   val genHeadersMessage = for {
     headers <- listOf(genEmptyBlockMessage)
   } yield HeadersMessage(headers.toVector)

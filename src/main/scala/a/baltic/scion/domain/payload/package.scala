@@ -27,7 +27,7 @@ package object payload {
   sealed abstract class EmptyMessage extends BitcoinMessage {
     final def serialize() = { Vector.empty}
   }
-  
+
   case class Inventory(
     invType: Long, // 4 bytes
     hash: Hash // 32 bytes
@@ -50,7 +50,7 @@ package object payload {
           ++ MessageWriter.littleEndian4(sequence))
     }
   }
-  
+
   case class TxOut(
       value: Long,
       script: Script
@@ -59,11 +59,11 @@ package object payload {
       MessageWriter.littleEndian8(value) ++ MessageWriter.writeBytes(script)
     }
   }
-  
+
   case class NetworkAddress(
     timestamp: Option[Long], // maybe 4
     services: Long, // 8
-    ip: java.net.InetAddress, // 16
+    ip: Vector[Byte],
     port: Int // 2
   ) extends BitcoinSerializable {
     def serialize() = {
@@ -106,7 +106,7 @@ package object payload {
     val command = "verack"
     def serialize() = Vector.empty[Byte]
   }
-  
+
   case class AddrMessage(
       addresses: Vector[NetworkAddress]
   ) extends BitcoinMessage {
@@ -124,7 +124,7 @@ package object payload {
       MessageWriter.serializeVector(inventories)
     }
   }
-  
+
   case class GetDataMessage(
     inventories: Vector[Inventory]
   ) extends BitcoinMessage {
@@ -133,7 +133,7 @@ package object payload {
       MessageWriter.serializeVector(inventories)
     }
   }
-  
+
   case class NotFoundMessage(
       inventories: Vector[Inventory]
   ) extends BitcoinMessage {
@@ -142,7 +142,7 @@ package object payload {
       MessageWriter.serializeVector(inventories)
     }
   }
-  
+
   case class GetBlocksMessage(
       version: Long,
       hashes: Vector[Hash],
@@ -155,7 +155,7 @@ package object payload {
           ++ hashStop)
     }
   }
-  
+
   case class GetHeadersMessage(
       version: Long,
       hashes: Vector[Hash],
@@ -168,7 +168,7 @@ package object payload {
           ++ hashStop)
     }
   }
-  
+
   case class TxMessage(
       version: Long,
       txins: Vector[TxIn],
@@ -279,9 +279,9 @@ package object payload {
           ++ MessageWriter.littleEndian4(nonce)) // 4 bytes
     }
   }
-    
 
-  
+
+
   case class FilterClearMessage() extends EmptyMessage { val command = "filterclear" }
   case class MerkleBlockMessage(
       header: BlockHeader,

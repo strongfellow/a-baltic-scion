@@ -40,17 +40,15 @@ class HashSpec extends FlatSpec with Matchers {
   }
 
   "versionMessage" should "be correct" in {
-    val bs = Array(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 127, 0, 0, 1).map(_.toByte)
-    val localhost = java.net.InetAddress.getByAddress(bs)
-    val bs2 = Array(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 0, 0, 0, 0).map(_.toByte)
-    val empty = java.net.InetAddress.getByAddress(bs2)
+    val localhost = Vector(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 127, 0, 0, 1).map(_.toByte)
+    val empty= Vector(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 0, 0, 0, 0).map(_.toByte)
     val msg = BitcoinMessageEnvelope(0xD9B4BEF9L, VersionMessage(
         60002L, // protocol version
         1L, // services
-        1355854353L, // timestamp 
+        1355854353L, // timestamp
         NetworkAddress(None, 1, localhost, 8333), // remote address
         NetworkAddress(None, 1, localhost, 12345), // local address
-        7284544412836900411L, // little endian nonce 
+        7284544412836900411L, // little endian nonce
         "/Satoshi:0.7.2/", // UserAgent
         212672L,
         true// startHeight
@@ -58,10 +56,10 @@ class HashSpec extends FlatSpec with Matchers {
     val msg2 = BitcoinMessageEnvelope(0xD9B4BEF9L, VersionMessage(
         60002L, // protocol version
         1L, // services
-        1355854353L, // timestamp 
+        1355854353L, // timestamp
         NetworkAddress(None, 1, empty, 0), // remote address
         NetworkAddress(None, 1, empty, 0), // local address
-        7284544412836900411L, // little endian nonce 
+        7284544412836900411L, // little endian nonce
         "/Satoshi:0.7.2/", // UserAgent
         212672L,
         true// startHeight
@@ -73,8 +71,7 @@ class HashSpec extends FlatSpec with Matchers {
   }
 
   "addrMessage" should "be correct" in {
-    val bs = Array(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 10, 0, 0, 1).map(_.toByte)
-    val localhost = java.net.InetAddress.getByAddress(bs)
+    val localhost = Vector(0,0,0,0,0,0,0,0,0,0,0xff, 0xff, 10, 0, 0, 1).map(_.toByte)
     val msg = BitcoinMessageEnvelope(0xD9B4BEF9L, AddrMessage(
       Vector(NetworkAddress(Some(0x4D1015E2L), 1, localhost, 8333)
     )))
