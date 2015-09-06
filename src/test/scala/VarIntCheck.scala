@@ -126,9 +126,4 @@ object VarIntCheck extends Properties("VarInt") {
   property("ser-de-ser") = Prop.forAll(ABSGen.genBitcoinMessageEnvelope) { m =>
     f(m)
   }
-/**
-  property("problem-fixer") = Prop.forAll(ABSGen.genX) {
-    m => f(m)
-  }
-*/
 }

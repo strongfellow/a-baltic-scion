@@ -1,5 +1,4 @@
-
-package a.baltic.scion.tcp
+package a.baltic.scion.actors
 
 import a.baltic.scion.util
 import java.net.InetSocketAddress

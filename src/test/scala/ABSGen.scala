@@ -11,29 +11,6 @@ import a.baltic.scion.domain.payload._
 
 object ABSGen {
 
-  val genX = const(
-    BitcoinMessageEnvelope(
-        118034699,
-        VersionMessage(
-            1078721452,
-            2993965376L,
-            -4461974043726512372L,
-            NetworkAddress(
-                None,
-                -5956424977621936308L,
-                Vector(1, -1, 127, -52),
-                58895),
-            NetworkAddress(
-                None,
-                5227063365501308449L,
-                Vector(-4, 0, -1, -1),
-                33706),
-            -9223372036854775808L,
-            "ub",
-            619283475,
-            true)))
-
-
   val genByteVector = for {
     bs <- Gen.listOf(arbitrary[Byte])
   } yield bs.toVector
