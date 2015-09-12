@@ -9,6 +9,10 @@ import akka.actor.ActorRef
  */
 object messages {
 
+  sealed trait Command
+  case object Connect extends Command
+  case class Register(listener: ActorRef) extends Command
+
   sealed trait Message
   case class PeerMessage() extends Message
   case class NodeMessage() extends Message

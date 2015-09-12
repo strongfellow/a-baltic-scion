@@ -14,7 +14,9 @@ class ABalticScion extends Actor {
     val remote = new InetSocketAddress("localhost", 8333)
     val listener = context.actorOf(Props[Listener], "listener")
     val tcpClient = context.actorOf(
-        Props.create(classOf[TcpClient], remote, listener))
+        Props.create(classOf[TcpClient], remote))
+    tcpClient ! a.baltic.scion.messages.Register(listener)
+    tcpClient ! a.baltic.scion.messages.Connect
   }
 
   def receive = {

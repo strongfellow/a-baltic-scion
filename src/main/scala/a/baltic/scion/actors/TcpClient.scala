@@ -22,6 +22,8 @@ import akka.io.Tcp.ConnectionClosed
 
 case object TcpConnect
 sealed trait S
+case object Start extends S
+case object ListenerRegistered extends S
 case object A extends S
 case object B extends S
 case object C extends S
@@ -35,13 +37,21 @@ case class TcpData(
 
 
 object TcpClient {
-  def props(remote: InetSocketAddress, listener: ActorRef) =
-    Props(classOf[TcpClient], remote, listener)
+  def props(remote: InetSocketAddress) =
+    Props(classOf[TcpClient], remote)
 }
-class TcpClient(remote: InetSocketAddress, listener: ActorRef) extends FSM[S,TcpData] {
+class TcpClient(remote: InetSocketAddress) extends FSM[S,TcpData] {
   import context.system
 
-  startWith(A, TcpData(Some(listener), None, None, None))
+  startWith(Start, TcpData(None, None, None, None))
+  when(Start) {
+    case Event(a.baltic.scion.messages.Register(listener), _) =>
+      goto(ListenerRegistered) using TcpData(Some(listener), None, None, None)
+  }
+  when(ListenerRegistered) {
+    case Event(a.baltic.scion.messages.Connect, d) =>
+      goto(A) using d
+  }
 
   when(A) {
     case Event(CommandFailed(_: Connect), TcpData(listener, _, _, _)) => {
@@ -84,10 +94,13 @@ class TcpClient(remote: InetSocketAddress, listener: ActorRef) extends FSM[S,Tcp
   }
 
   onTransition {
+    case _ -> A => IO(Tcp) ! Connect(remote)
+
+  }
+  onTransition {
     case _ -> C => context stop self
   }
 
   initialize()
-  IO(Tcp) ! Connect(remote)
 
 }

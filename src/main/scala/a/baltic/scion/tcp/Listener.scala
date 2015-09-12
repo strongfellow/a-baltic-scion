@@ -45,7 +45,7 @@ class Listener extends Actor {
             case InvMessage(invs) => {
               for {
                 i <- invs
-              } println(a.baltic.scion.util.hex(i.hash.reverse))
+              } println("inv: " + a.baltic.scion.util.hex(i.hash.reverse))
             }
             case _ => {
 
