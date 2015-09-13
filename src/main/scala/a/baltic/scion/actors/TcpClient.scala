@@ -19,6 +19,7 @@ import akka.io.{ IO, Tcp }
 import akka.io.Tcp.CloseCommand
 import akka.actor.FSM
 import akka.io.Tcp.ConnectionClosed
+import a.baltic.scion.domain.payload.MessageParser
 
 case object TcpConnect
 sealed trait S
@@ -34,7 +35,6 @@ case class TcpData(
     listenerMessage: Option[Any],
     tcpMessage: Option[Any]
 )
-
 
 object TcpClient {
   def props(remote: InetSocketAddress) =
@@ -67,6 +67,9 @@ class TcpClient(remote: InetSocketAddress) extends FSM[S,TcpData] {
 
   when(B) {
     case Event(data: ByteString, TcpData(listener, tcp, _, _)) =>
+      for {
+        x <- MessageParser.parseBitcoinMessageEnvelope(data, 0)
+      } log.info("were trying to send {}", x)
       goto(B) using TcpData(listener, tcp, None, Some(Write(data)))
     case Event(CommandFailed(w: Write), TcpData(listener, tcp, _, _)) =>
       goto(B) using TcpData(listener, tcp, Some("write failed"), None)
@@ -80,8 +83,6 @@ class TcpClient(remote: InetSocketAddress) extends FSM[S,TcpData] {
 
   onTransition {
     case _ -> _ => {
-      log.info("{}", nextStateData)
-
       for {
         listener <- nextStateData.listener
         data <- nextStateData.listenerMessage
