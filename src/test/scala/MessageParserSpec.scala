@@ -25,7 +25,7 @@ class MessageParserSpec extends FlatSpec with Matchers {
       TestCase(0x0000010000000000L, Vector(0xff, 0, 0, 0, 0, 0, 1, 0, 0)),
       TestCase(0x0001000000000000L, Vector(0xff, 0, 0, 0, 0, 0, 0, 1, 0)),
       TestCase(0x0100000000000000L, Vector(0xff, 0, 0, 0, 0, 0, 0, 0, 1)),
-      
+
       TestCase(0x00ffffffffffffffL, Vector(0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, 0x00)),
       TestCase(0xff00ffffffffffffL, Vector(0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x00, 0xff)),
       TestCase(0xffff00ffffffffffL, Vector(0xff,0xff,0xff,0xff,0xff,0xff,0x00,0xff, 0xff)),
@@ -37,7 +37,7 @@ class MessageParserSpec extends FlatSpec with Matchers {
       TestCase(0xfffffffffffffffeL, Vector(0xff,0xfe,0xff,0xff,0xff,0xff,0xff,0xff, 0xff)),
       TestCase(0xffffffffffffffffL, Vector(0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, 0xff))
   )
-  
+
   def check(vector: Vector[Long], expected: Long): Unit = {
     MessageParser.parseVarInt(vector.map(_.toByte), 0) should be(Some(expected, vector.length))
   }
@@ -47,7 +47,7 @@ class MessageParserSpec extends FlatSpec with Matchers {
     val actual = MessageParser.parseVarInt(v, 0)
     val expected = Some((0L, 1))
     actual should be(expected)
-    
+
 
     for (x <- 0L until 0xfdL) {
       check(Vector(x.toByte), x)
@@ -55,7 +55,7 @@ class MessageParserSpec extends FlatSpec with Matchers {
     for (x <- 0xfd until 0x10000) {
       check(Vector(0xfd, (x & 0xff),  (x >> 8) & 0xff), x)
     }
-    
+
     testCases.foreach {
       case TestCase(n, v) => {
         val bytes = v.map(_.toByte)

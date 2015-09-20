@@ -1,0 +1,8 @@
+
+
+/**
+ * @author andrew
+ */
+class HexCheck {
+  
+}

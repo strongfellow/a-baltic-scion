@@ -1,3 +1,4 @@
+
 package a.baltic.scion.domain.payload
 
 /**

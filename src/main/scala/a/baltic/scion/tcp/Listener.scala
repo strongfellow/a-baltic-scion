@@ -6,13 +6,13 @@ import akka.io.Tcp.Connected
 import a.baltic.scion.domain.payload.VersionMessage
 import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
 import a.baltic.scion.domain.payload.NetworkAddress
-import a.baltic.scion.domain.payload.MessageWriter
 import a.baltic.scion.domain.payload.MessageParser
 import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
 import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
 import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
 import a.baltic.scion.domain.payload.InvMessage
 import akka.event.Logging
+import a.baltic.scion.domain.payload.MessageWriter
 
 /**
  * @author andrew

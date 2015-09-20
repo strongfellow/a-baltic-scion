@@ -9,6 +9,7 @@ import akka.actor.ActorRef
  */
 object messages {
 
+  type Hash = Vector[Byte]
   sealed trait Command
   case object Connect extends Command
   case class Register(listener: ActorRef) extends Command
@@ -36,4 +37,8 @@ object messages {
       reomte: InetSocketAddress, local: InetSocketAddress) extends Message
 
   case object PeerConnectCommand
+
+  case class PeerConnected(peer: ActorRef, blockHeight: Long)
+  case class HeadersReceived(headers: Vector[Hash])
+  case class BlockReceived(blockHash: Hash)
 }

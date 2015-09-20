@@ -4,12 +4,12 @@ import org.scalatest._
 import a.baltic.scion.util
 import a.baltic.scion.domain.payload.VersionMessage
 import a.baltic.scion.domain.payload.NetworkAddress
-import a.baltic.scion.domain.payload.MessageWriter
 import a.baltic.scion.domain.payload.BitcoinMessageEnvelope
 import a.baltic.scion.domain.payload.MessageParser
 import a.baltic.scion.domain.payload.AddrMessage
 import a.baltic.scion.domain.payload.AddrMessage
 import a.baltic.scion.domain.payload.VerackMessage
+import a.baltic.scion.domain.payload.MessageWriter
 
 class HashSpec extends FlatSpec with Matchers {
 
