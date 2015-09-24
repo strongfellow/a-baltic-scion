@@ -21,13 +21,13 @@ object BitcoinDeserializer {
  */
 class BitcoinDeserializer(next: ActorRef, network: Long) extends Actor {
 
-   val log = Logging(context.system, this)
+  var buffer = ByteString()
+  val log = Logging(context.system, this)
 
    @tailrec
    private def consume(bytes: ByteString, start: Int): Unit = {
-     if (start < bytes.length) {
-        val parsed = MessageParser.parseBitcoinMessageEnvelope(bytes, start)
-        parsed match {
+      val parsed = MessageParser.parseBitcoinMessageEnvelope(bytes, start)
+      parsed match {
           case Some((x, nextStart)) =>
             if (x.magic == network) {
               next ! x.payload
@@ -35,15 +35,14 @@ class BitcoinDeserializer(next: ActorRef, network: Long) extends Actor {
               next ! InvalidNetworkEvent(network, x.magic)
             }
             consume(bytes, nextStart)
-          case None => next ! ParseFailedEvent(bytes)
-        }
+          case None => buffer = bytes.slice(start, bytes.length)
      }
    }
 
   def receive = {
     case bytes:ByteString =>
-//      log.info("{}", bytes.slice(4, 16).filter(b => b != 0).map(x => x.toChar).mkString(""))
-      consume(bytes, 0)
+      buffer = buffer ++ bytes
+      consume(buffer, 0)
     case x => next ! x
   }
 }

@@ -165,9 +165,6 @@ object MessageParser {
 
   def parseLittleEndian(bytes: IndexedSeq[Byte], start: Int, n: Int): Parser[Long] = {
     if ((start + n) > bytes.length) {
-      println("start: " + start)
-      println("n:     " + n)
-      println("bytes.length: " + bytes.length)
       None
     } else {
       val sum = (0 until n).map {
