@@ -9,6 +9,7 @@ import a.baltic.scion.messages.ParseFailedEvent
 import a.baltic.scion.messages.InvalidNetworkEvent
 import akka.actor.Props
 import akka.event.Logging
+import scala.annotation.tailrec
 
 object BitcoinDeserializer {
   def props(next: ActorRef, network: Long) =
@@ -22,19 +23,27 @@ class BitcoinDeserializer(next: ActorRef, network: Long) extends Actor {
 
    val log = Logging(context.system, this)
 
+   @tailrec
+   private def consume(bytes: ByteString, start: Int): Unit = {
+     if (start < bytes.length) {
+        val parsed = MessageParser.parseBitcoinMessageEnvelope(bytes, start)
+        parsed match {
+          case Some((x, nextStart)) =>
+            if (x.magic == network) {
+              next ! x.payload
+            } else {
+              next ! InvalidNetworkEvent(network, x.magic)
+            }
+            consume(bytes, nextStart)
+          case None => next ! ParseFailedEvent(bytes)
+        }
+     }
+   }
+
   def receive = {
     case bytes:ByteString =>
-      log.info("{}", bytes.slice(4, 16).filter(b => b != 0).map(x => x.toChar).mkString(""))
-      val parsed = MessageParser.parseBitcoinMessageEnvelope(bytes, 0)
-      parsed match {
-        case Some((x, _)) =>
-          if (x.magic == network) {
-            next ! x.payload
-          } else {
-            next ! InvalidNetworkEvent(network, x.magic)
-          }
-        case None => next ! ParseFailedEvent(bytes)
-      }
+//      log.info("{}", bytes.slice(4, 16).filter(b => b != 0).map(x => x.toChar).mkString(""))
+      consume(bytes, 0)
     case x => next ! x
   }
 }

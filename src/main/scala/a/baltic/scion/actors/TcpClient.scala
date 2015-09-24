@@ -67,9 +67,12 @@ class TcpClient(remote: InetSocketAddress) extends FSM[S,TcpData] {
 
   when(B) {
     case Event(data: ByteString, TcpData(listener, tcp, _, _)) =>
+      /**
       for {
         x <- MessageParser.parseBitcoinMessageEnvelope(data, 0)
       } log.info("were trying to send {}", x)
+      *
+      */
       goto(B) using TcpData(listener, tcp, None, Some(Write(data)))
     case Event(CommandFailed(w: Write), TcpData(listener, tcp, _, _)) =>
       goto(B) using TcpData(listener, tcp, Some("write failed"), None)

@@ -5,6 +5,7 @@ import akka.event.Logging
 import a.baltic.scion.domain.payload.BitcoinMessage
 import a.baltic.scion.domain.payload.VersionMessage
 import a.baltic.scion.domain.payload.NetworkAddress
+import a.baltic.scion.domain.payload.PingMessage
 import akka.actor.FSM
 import akka.actor.ActorRef
 import a.baltic.scion.messages.TcpConnectSucceededEvent
@@ -13,6 +14,8 @@ import a.baltic.scion.messages.PeerConnectCommand
 import a.baltic.scion.messages.TcpConnectCommand
 import akka.actor.Props
 import a.baltic.scion.domain.payload.VerackMessage
+import a.baltic.scion.messages.SendGetHeadersMessage
+import a.baltic.scion.domain.payload.GetHeadersMessage
 
 sealed trait State
 
@@ -31,14 +34,14 @@ case class Connected(
     remote:InetSocketAddress, local: InetSocketAddress) extends Data
 
 object PeerConnection {
-  def props(serializer: ActorRef) =  Props(classOf[PeerConnection], serializer)
+  def props(blockChain: ActorRef, serializer: ActorRef) =  Props(classOf[PeerConnection], blockChain, serializer)
 }
 
 /**
  * @author andrew
  */
 
-class PeerConnection(serializer: ActorRef) extends FSM[State, Data] {
+class PeerConnection(blockChain: ActorRef, serializer: ActorRef) extends FSM[State, Data] {
 
   startWith(Unconnected, Uninitialized)
 
@@ -70,16 +73,26 @@ class PeerConnection(serializer: ActorRef) extends FSM[State, Data] {
   }
   when(VersionMessageSent) {
     case Event(v: VersionMessage, data) => {
-      serializer ! VerackMessage()
-      log.info("version message: {}", v)
+      // serializer ! VerackMessage()
+      log.info("version message received by PeerConnection: {}", v)
+      blockChain ! v
       goto(VersionMessageReceived) using data
     }
   }
 
   when(VersionMessageReceived) {
-    case Event(x, y) =>
-      log.info("received {}", x)
-      stay()
+    case Event(SendGetHeadersMessage(hashes), data) => {
+    val genesisHash: Vector[Byte] = a.baltic.scion.util.unHex(
+      "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f").toVector.reverse
+      val hashStop = a.baltic.scion.util.unHex("0000000000000000000000000000000000000000000000000000000000000000").toVector
+      val getHeadersMessage = GetHeadersMessage(70002, Vector(genesisHash), hashStop)
+      serializer ! getHeadersMessage
+      serializer ! PingMessage(1L)
+      stay using data
+    }
+    case Event(message, data) =>
+      log.info("received {}", message)
+      stay using data
   }
 
   whenUnhandled {
