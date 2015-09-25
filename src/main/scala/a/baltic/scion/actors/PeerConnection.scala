@@ -16,6 +16,9 @@ import akka.actor.Props
 import a.baltic.scion.domain.payload.VerackMessage
 import a.baltic.scion.messages.SendGetHeadersMessage
 import a.baltic.scion.domain.payload.GetHeadersMessage
+import a.baltic.scion.domain.payload.HeadersMessage
+import a.baltic.scion.domain.payload.InvMessage
+import a.baltic.scion.domain.payload.BlockMessage
 
 sealed trait State
 
@@ -82,14 +85,23 @@ class PeerConnection(blockChain: ActorRef, serializer: ActorRef) extends FSM[Sta
 
   when(VersionMessageReceived) {
     case Event(SendGetHeadersMessage(hashes), data) => {
-    val genesisHash: Vector[Byte] = a.baltic.scion.util.unHex(
-      "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f").toVector.reverse
       val hashStop = a.baltic.scion.util.unHex("0000000000000000000000000000000000000000000000000000000000000000").toVector
-      val getHeadersMessage = GetHeadersMessage(70002, Vector(genesisHash), hashStop)
+      val getHeadersMessage = GetHeadersMessage(70002, hashes, hashStop)
       serializer ! getHeadersMessage
       serializer ! PingMessage(1L)
       stay using data
     }
+
+    case Event(h: HeadersMessage, data) => {
+      blockChain ! h
+      stay using data
+    }
+
+    case Event(block: BlockMessage, data) => {
+      blockChain ! block
+      stay using data
+    }
+
     case Event(message, data) =>
       log.info("received {}", message)
       stay using data

@@ -6,6 +6,8 @@ package a.baltic.scion
 import a.baltic.scion.domain.payload.MessageParser
 import scala.annotation.tailrec
 import java.net.InetSocketAddress
+import a.baltic.scion.domain.payload.BlockHeader
+import a.baltic.scion.domain.payload.BlockMessage
 package object util {
 
   import java.security.MessageDigest
@@ -13,6 +15,10 @@ package object util {
 
   def checksum(bs: Seq[Byte]): Long = {
     MessageParser.parseLittleEndian(doubleSHA256(bs), 0, 4).get._1
+  }
+
+  def headerHash(b: BlockMessage) = {
+    doubleSHA256(b.header.serialize())
   }
 
   def doubleSHA256(bs: Seq[Byte])  = {
