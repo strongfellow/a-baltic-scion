@@ -339,7 +339,7 @@ object MessageParser {
     } yield (TxMessage(version, txins, txouts, lockTime), start)
   }
 
-  private def parseBlockMessage(bytes: IndexedSeq[Byte], start: Int) = {
+  def parseBlockMessage(bytes: IndexedSeq[Byte], start: Int) = {
     for {
       (header, start) <- parseBlockHeader(bytes, start)
       (transactions, start) <- varTimes(parseTxMessage, bytes, start)
