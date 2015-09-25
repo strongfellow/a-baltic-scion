@@ -41,6 +41,9 @@ class GenesisSpec extends FlatSpec with Matchers {
         )
         )
     ), genesisBlock.length)))
+
+    val actualHash = util.headerHash(parsed.get._1)
+    actualHash should be(genesisHash)
   }
 
 }
