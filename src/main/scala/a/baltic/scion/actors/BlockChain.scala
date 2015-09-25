@@ -16,7 +16,10 @@ import a.baltic.scion.bitcoin.BlockLocator
 abstract trait BlockChainState
 case object S0 extends BlockChainState
 case object S1 extends BlockChainState
-case class BlockChainData(targetHeight: Long,
+case object HeadersSynched extends BlockChainState
+
+case class BlockChainData(
+    targetHeight: Long,
     synchPeer: Option[ActorRef],
     headers: Vector[Hash])
 
@@ -37,7 +40,7 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
   }
 
   onTransition {
-    case S0 -> S1 => {
+    case _ -> S1 => {
       nextStateData.synchPeer.get ! SendGetHeadersMessage(
           BlockLocator.blockLocator(nextStateData.headers))
     }
@@ -45,13 +48,36 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
 
   when(S1) {
     case Event(message: HeadersMessage, data) =>
-      for {
-        x <- message.headers
-      } log.info("{}: {} -> {}", x.transactions.length, util.hex(util.headerHash(x).reverse),
-          util.hex(x.header.previousBlock.reverse))
-      log.info("message: {}", message)
-      log.info("data: {}", data)
-      stay using data
+      val newHeaders = message.headers.foldLeft(data.headers) {
+        (hs, x) => {
+          val tip = hs.last
+          val prev = x.header.previousBlock
+          if (prev == tip) {
+//            log.info("YIPPEE")
+            hs :+ util.headerHash(x)
+          } else {
+            log.info("WHAMMEE")
+            hs
+          }
+        }
+      }
+      log.info("blockChain height: {}", newHeaders.length)
+      val nextStateData = BlockChainData(data.targetHeight, data.synchPeer, newHeaders)
+      if (newHeaders.length >= data.targetHeight) {
+        goto(HeadersSynched) using nextStateData
+      } else {
+        goto(S1) using nextStateData
+      }
+
+  }
+
+  onTransition {
+    case _ -> HeadersSynched =>
+      log.info("BLOCKCHAIN HEADERS SYNCHED")
+  }
+
+  when(HeadersSynched) {
+    case _ => stay
   }
 
   startWith(S0, BlockChainData(1, None, Vector(genesisHash)))

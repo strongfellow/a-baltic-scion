@@ -88,7 +88,7 @@ class PeerConnection(blockChain: ActorRef, serializer: ActorRef) extends FSM[Sta
       val hashStop = a.baltic.scion.util.unHex("0000000000000000000000000000000000000000000000000000000000000000").toVector
       val getHeadersMessage = GetHeadersMessage(70002, hashes, hashStop)
       serializer ! getHeadersMessage
-      serializer ! PingMessage(1L)
+//      serializer ! PingMessage(1L)
       stay using data
     }
 
@@ -103,7 +103,7 @@ class PeerConnection(blockChain: ActorRef, serializer: ActorRef) extends FSM[Sta
     }
 
     case Event(message, data) =>
-      log.info("received {}", message)
+//      log.info("received {}", message)
       stay using data
   }
 

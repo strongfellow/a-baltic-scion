@@ -17,8 +17,8 @@ package object util {
     MessageParser.parseLittleEndian(doubleSHA256(bs), 0, 4).get._1
   }
 
-  def headerHash(b: BlockMessage) = {
-    doubleSHA256(b.header.serialize())
+  def headerHash(b: BlockMessage): Vector[Byte] = {
+    Vector(doubleSHA256(b.header.serialize()):_*)
   }
 
   def doubleSHA256(bs: Seq[Byte])  = {
