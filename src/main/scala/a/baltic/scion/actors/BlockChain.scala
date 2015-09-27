@@ -13,12 +13,12 @@ import a.baltic.scion.messages.SendGetHeadersMessage
 import a.baltic.scion.domain.payload.HeadersMessage
 import a.baltic.scion.bitcoin.BlockLocator
 import a.baltic.scion.domain.payload.BlockMessage
+import a.baltic.scion.messages.SendGetDataMessageForBlocks
 
 abstract trait BlockChainState
 case object FullySynched extends BlockChainState
 case object BlocksSynchedHeadersLagging extends BlockChainState
 case object BlocksLagging extends BlockChainState
-case object HeadersSynched extends BlockChainState
 
 case class BlockChainData(
     targetHeight: Long,
@@ -81,16 +81,11 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
       if (nextStateData.missingBlocks.isEmpty) {
         stay using nextStateData
       } else {
+        for {
+          peer <- nextStateData.synchPeer
+        } peer ! SendGetDataMessageForBlocks(nextStateData.missingBlocks)
         goto(BlocksLagging) using nextStateData
       }
-      /**
-      if (newHeaders.length >= data.targetHeight) {
-        goto(HeadersSynched) using nextStateData
-      } else {
-        goto(BlocksSynchedHeadersLagging) using nextStateData
-      }
-      *
-      */
   }
 
   when(BlocksLagging) {
@@ -109,15 +104,6 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
         BlocksLagging
       }
       goto(nextState) using nextStateData
-  }
-
-  onTransition {
-    case _ -> HeadersSynched =>
-      log.info("BLOCKCHAIN HEADERS SYNCHED")
-  }
-
-  when(HeadersSynched) {
-    case _ => stay
   }
 
   startWith(FullySynched,

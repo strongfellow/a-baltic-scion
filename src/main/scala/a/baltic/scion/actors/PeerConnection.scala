@@ -22,6 +22,9 @@ import a.baltic.scion.domain.payload.BlockMessage
 import a.baltic.scion.domain.payload.GetDataMessage
 import a.baltic.scion.domain.payload.Inventory
 import a.baltic.scion.domain.payload.BlockMessage
+import a.baltic.scion.messages.SendGetDataMessageForBlocks
+import a.baltic.scion.domain.payload.GetDataMessage
+import a.baltic.scion.domain.payload.Inventory
 
 sealed trait State
 
@@ -100,13 +103,21 @@ class PeerConnection(blockChain: ActorRef, serializer: ActorRef) extends FSM[Sta
       stay using data
     }
 
+    case Event(SendGetDataMessageForBlocks(blocks), data) => {
+      val invs = blocks.map { b => Inventory(2L, b) } toVector
+      val msg = GetDataMessage(invs)
+      serializer ! msg
+      stay using data
+    }
+
     case Event(h: HeadersMessage, data) => {
       blockChain ! h
       stay using data
     }
 
     case Event(block: BlockMessage, data) => {
-      log.info("block: {}", a.baltic.scion.util.hex(block.serialize()))
+//      log.info("block: {}", a.baltic.scion.util.hex(block.serialize()))
+//      log.info("block received: {}", a.baltic.scion.util.hex(a.baltic.scion.util.headerHash(block).reverse))
       blockChain ! block
       stay using data
     }

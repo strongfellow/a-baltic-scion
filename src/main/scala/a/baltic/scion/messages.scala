@@ -3,6 +3,7 @@ package a.baltic.scion
 import akka.io.Tcp.Connect
 import java.net.InetSocketAddress
 import akka.actor.ActorRef
+import a.baltic.scion.domain.payload.GetDataMessage
 
 /**
  * @author andrew
@@ -42,5 +43,6 @@ object messages {
   case class BlockReceived(blockHash: Hash)
 
   case class SendGetHeadersMessage(hashes: Vector[Hash])
+  case class SendGetDataMessageForBlocks(blocks: Set[Hash])
 
 }
