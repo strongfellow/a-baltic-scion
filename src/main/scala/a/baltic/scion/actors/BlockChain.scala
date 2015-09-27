@@ -12,9 +12,10 @@ import a.baltic.scion.util
 import a.baltic.scion.messages.SendGetHeadersMessage
 import a.baltic.scion.domain.payload.HeadersMessage
 import a.baltic.scion.bitcoin.BlockLocator
+import a.baltic.scion.domain.payload.BlockMessage
 
 abstract trait BlockChainState
-case object S0 extends BlockChainState
+case object FullySynched extends BlockChainState
 case object BlocksSynchedHeadersLagging extends BlockChainState
 case object BlocksLagging extends BlockChainState
 case object HeadersSynched extends BlockChainState
@@ -34,7 +35,7 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
   val genesisHash: Vector[Byte] = a.baltic.scion.util.unHex(
           "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f").toVector.reverse
 
-  when(S0) {
+  when(FullySynched) {
     case Event(v: VersionMessage, data: BlockChainData) => {
       if (v.startHeight > data.targetHeight) {
         goto(BlocksSynchedHeadersLagging) using BlockChainData(
@@ -92,6 +93,24 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
       */
   }
 
+  when(BlocksLagging) {
+    case Event(block: BlockMessage,
+        BlockChainData(targetHeight, synchPeer, headers, missingBlocks)) =>
+      val headerHash = util.headerHash(block)
+      val newMissingBlocks = missingBlocks - headerHash
+      val nextStateData = BlockChainData(targetHeight, synchPeer, headers, newMissingBlocks)
+      val nextState:BlockChainState = if (newMissingBlocks.isEmpty) {
+        if (targetHeight == headers.length) {
+          FullySynched
+        } else {
+          BlocksSynchedHeadersLagging
+        }
+      } else {
+        BlocksLagging
+      }
+      goto(nextState) using nextStateData
+  }
+
   onTransition {
     case _ -> HeadersSynched =>
       log.info("BLOCKCHAIN HEADERS SYNCHED")
@@ -101,10 +120,10 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
     case _ => stay
   }
 
-  startWith(S0,
+  startWith(FullySynched,
       BlockChainData(1,
           None,
           Vector(genesisHash),
-          Vector(genesisHash).toSet))
+          Set.empty))
 
 }
