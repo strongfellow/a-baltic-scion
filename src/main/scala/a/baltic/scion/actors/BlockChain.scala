@@ -50,6 +50,10 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
   }
 
   onTransition {
+    case a -> b => if (a != b) log.info("transition from {} to {}", a, b)
+  }
+
+  onTransition {
     case _ -> BlocksSynchedHeadersLagging => {
       nextStateData.synchPeer.get ! SendGetHeadersMessage(
           BlockLocator.blockLocator(nextStateData.headers))

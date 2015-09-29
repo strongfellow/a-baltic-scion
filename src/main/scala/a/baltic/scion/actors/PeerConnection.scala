@@ -94,12 +94,14 @@ class PeerConnection(blockChain: ActorRef, serializer: ActorRef) extends FSM[Sta
       val hashStop = a.baltic.scion.util.unHex("0000000000000000000000000000000000000000000000000000000000000000").toVector
       val getHeadersMessage = GetHeadersMessage(70002, hashes, hashStop)
       serializer ! getHeadersMessage
-//      serializer ! PingMessage(1L)
+      /**
+      serializer ! PingMessage(1L)
       val genesisHash: Vector[Byte] = a.baltic.scion.util.unHex(
           "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f").toVector.reverse
 
       val gdm = GetDataMessage(Vector(Inventory(2L, genesisHash)))
       serializer ! gdm
+      */
       stay using data
     }
 
