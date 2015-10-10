@@ -105,6 +105,7 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
           BlocksSynchedHeadersLagging
         }
       } else {
+        log.info("still missing blocks {}", newMissingBlocks.size)
         BlocksLagging
       }
       goto(nextState) using nextStateData
