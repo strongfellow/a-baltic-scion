@@ -52,6 +52,12 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
   onTransition {
     case a -> b => if (a != b) log.info("transition from {} to {}", a, b)
   }
+  onTransition {
+    case a -> b =>
+      log.info("transition from {} to {}", a, b)
+      log.info("nextStateData: {}", nextStateData)
+  }
+
 
   onTransition {
     case _ -> BlocksSynchedHeadersLagging => {
@@ -67,10 +73,8 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
           val tip = hs.last
           val prev = x.header.previousBlock
           if (prev == tip) {
-//            log.info("YIPPEE")
             hs :+ util.headerHash(x)
           } else {
-            log.info("WHAMMEE")
             hs
           }
         }
@@ -109,6 +113,12 @@ class BlockChain extends FSM[BlockChainState, BlockChainData] {
         BlocksLagging
       }
       goto(nextState) using nextStateData
+  }
+
+  whenUnhandled {
+    case Event(message, data) =>
+      log.info("unhandled message {}", message)
+      stay using data
   }
 
   startWith(FullySynched,
